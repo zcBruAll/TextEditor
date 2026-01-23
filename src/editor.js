@@ -13,6 +13,8 @@ export class Editor {
         this.lines = [];
 
         this.cursor = { line: 0, col: 0 };
+        this.scrollY = 0;
+        this.scrollX = 0;
 
         this.caretVisible = true;
         this.skipCaretChange = false;
@@ -38,7 +40,25 @@ export class Editor {
         this.render();
     }
 
-    ensureVisibleCaret() {
+    _ensureVisibleCursor() {
+        const viewW = this.canvas.width / this.dpr;
+        const viewH = this.canvas.height / this.dpr;
+
+        const caretX = this.padding + this.cursor.col * this.charWidth;
+        const caretY = this.padding + this.cursor.line * this.lineHeight;
+
+        const margin = 24;
+
+        if (caretX - margin < this.scrollX) this.scrollX = Math.max(0, caretX - margin);
+        if (caretY - margin < this.scrollY) this.scrollY = Math.max(0, caretY - margin);
+
+        if (caretX + margin > this.scrollX + viewW) this.scrollX = caretX + margin - viewW;
+        if (caretY + this.lineHeight + margin > this.scrollY + viewH) {
+            this.scrollY = caretY + this.lineHeight + margin - viewH;
+        }
+    }
+
+    _ensureVisibleCaret() {
         this.caretVisible = true;
         this.skipCaretChange = true;
     }
@@ -54,39 +74,39 @@ export class Editor {
             case "ArrowRight":
                 e.preventDefault();
                 this._moveRight();
-                this.ensureVisibleCaret();
+                this._ensureVisibleCaret();
                 break;
             case "ArrowLeft":
                 e.preventDefault();
                 this._moveLeft();
-                this.ensureVisibleCaret();
+                this._ensureVisibleCaret();
                 break;
             case "ArrowUp":
                 e.preventDefault();
                 this._moveUp();
-                this.ensureVisibleCaret();
+                this._ensureVisibleCaret();
                 break;
             case "ArrowDown":
                 e.preventDefault();
                 this._moveDown();
-                this.ensureVisibleCaret();
+                this._ensureVisibleCaret();
                 break;
 
             // Content special keys
             case "Enter":
                 e.preventDefault();
                 this._insertNewLine();
-                this.ensureVisibleCaret();
+                this._ensureVisibleCaret();
                 break;
             case "Backspace":
                 e.preventDefault();
                 this._backspace();
-                this.ensureVisibleCaret();
+                this._ensureVisibleCaret();
                 break;
             case "Tab":
                 e.preventDefault();
                 this._insertText("  ");
-                this.ensureVisibleCaret();
+                this._ensureVisibleCaret();
                 break;
 
             default:
@@ -94,11 +114,12 @@ export class Editor {
                 if (e.key.length == 1) {
                     e.preventDefault();
                     this._insertText(e.key);
-                    this.ensureVisibleCaret();
+                    this._ensureVisibleCaret();
                 }
                 break;
         }
 
+        this._ensureVisibleCursor();
         this.render();
     }
 
@@ -207,16 +228,20 @@ export class Editor {
         ctx.textBaseline = "top";
         ctx.fillStyle = "#ffffffff";
 
-        for (let i = 0; i < this.lines.length; i++) {
-            const x = this.padding;
-            const y = this.padding + i * this.lineHeight;
-            ctx.fillText(this.lines[i] ?? "", x, y);
+        const startLine = Math.max(0, Math.floor(this.scrollY / this.lineHeight));
+        const endLine = Math.min(this.lines.length, startLine + Math.ceil((h + this.lineHeight) / this.lineHeight));
+
+        for (let i = startLine; i < endLine; i++) {
+            const x = this.padding - this.scrollX;
+            const y = this.padding + i * this.lineHeight - this.scrollY;
+            ctx.fillText(this.lines[i], x, y);
         }
 
         // Caret
         if (this.caretVisible) {
-            const cx = this.padding + this.cursor.col * this.charWidth;
-            const cy = this.padding + this.cursor.line * this.lineHeight - 2;
+            console.log(`${this.scrollX} ${this.scrollY}`);
+            const cx = this.padding + this.cursor.col * this.charWidth - this.scrollX;
+            const cy = this.padding + this.cursor.line * this.lineHeight - 2 - this.scrollY;
 
             if (cx >= -2 && cx <= w + 2 && cy >= -this.lineHeight && cy <= h + this.lineHeight) {
                 ctx.fillStyle = "#ffffffff";
