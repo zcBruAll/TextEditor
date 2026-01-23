@@ -36,9 +36,32 @@ export class Editor {
         }
 
         switch (e.key) {
-            case "Enter":
+            // Arrows
+            case "ArrowRight":
+                e.preventDefault();
+                this.cursor.col += 1;
+                break;
+            case "ArrowLeft":
+                e.preventDefault();
+                this.cursor.col -= 1;
+                break;
+            case "ArrowUp":
+                e.preventDefault();
+                this.cursor.line -= 1;
+                break;
+            case "ArrowDown":
                 e.preventDefault();
                 this.cursor.line += 1;
+                break;
+
+            // Content special keys
+            case "Enter":
+                e.preventDefault();
+                this._insertNewLine();
+                break;
+            case "Backspace":
+                e.preventDefault();
+                this._backspace();
                 break;
             case "Tab":
                 e.preventDefault();
@@ -62,6 +85,35 @@ export class Editor {
         const s = this.lines[line] ?? "";
         this.lines[line] = s.slice(0, col) + text + s.slice(col);
         this.cursor.col += text.length;
+    }
+
+    _insertNewLine() {
+        const { line, col } = this.cursor;
+        const s = this.lines[line] ?? "";
+        const left = s.slice(0, col);
+        const right = s.slice(col);
+        this.lines[line] = left;
+        this.lines.splice(line + 1, 0, right);
+        this.cursor.line += 1;
+        this.cursor.col = 0;
+    }
+
+    _backspace() {
+        const { line, col } = this.cursor;
+        if (line === 0 && col === 0) return;
+
+        const s = this.lines[line] ?? "";
+        if (col > 0) {
+            this.lines[line] = s.slice(0, col - 1) + s.slice(col);
+            this.cursor.col -= 1;
+            return;
+        }
+
+        // Merge with previous line when col === 0
+        const prev = this.lines[line - 1] = prev + s;
+        this.lines.splice(line, 1);
+        this.cursor.line -= 1;
+        this.cursor.col = prev.length;
     }
 
     render() {
