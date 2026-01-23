@@ -22,7 +22,7 @@ jobs:
         port: 22
         script: |
           # Go to directory
-          cd /var/www/editor
+          cd /var/www/TextEditor
           
           # Pull the latest changes
           git pull origin main
