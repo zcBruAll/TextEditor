@@ -53,22 +53,22 @@ export class Editor {
             // Arrows
             case "ArrowRight":
                 e.preventDefault();
-                this.cursor.col += 1;
+                this._moveRight();
                 this.ensureVisibleCaret();
                 break;
             case "ArrowLeft":
                 e.preventDefault();
-                this.cursor.col -= 1;
+                this._moveLeft();
                 this.ensureVisibleCaret();
                 break;
             case "ArrowUp":
                 e.preventDefault();
-                this.cursor.line -= 1;
+                this._moveUp();
                 this.ensureVisibleCaret();
                 break;
             case "ArrowDown":
                 e.preventDefault();
-                this.cursor.line += 1;
+                this._moveDown();
                 this.ensureVisibleCaret();
                 break;
 
@@ -102,6 +102,7 @@ export class Editor {
         this.render();
     }
 
+    // Text management
     _insertText(text) {
         const { line, col } = this.cursor;
         const s = this.lines[line] ?? "";
@@ -132,10 +133,61 @@ export class Editor {
         }
 
         // Merge with previous line when col === 0
-        const prev = this.lines[line - 1] = prev + s;
+        const prev = this.lines[line - 1] ?? "";
+        this.lines[line - 1] = prev + s;
         this.lines.splice(line, 1);
         this.cursor.line -= 1;
         this.cursor.col = prev.length;
+    }
+
+    // Cursor movement
+    _moveLeft() {
+        const { line, col } = this.cursor;
+
+        if (col > 0) {
+            this.cursor.col -= 1;
+            return;
+        }
+        if (line > 0) {
+            this.cursor.line -= 1;
+            this.cursor.col = (this.lines[this.cursor.line] ?? "").length;
+        }
+    }
+
+    _moveRight() {
+        const { line, col } = this.cursor;
+        const length = (this.lines[line] ?? "").length
+
+        if (col < length) {
+            this.cursor.col += 1;
+            return;
+        }
+        if (line < this.lines.length - 1) {
+            this.cursor.line += 1;
+            this.cursor.col = 0;
+        }
+    }
+
+    _moveUp() {
+        const { line, col } = this.cursor;
+
+        if (line > 0) {
+            this.cursor.line -= 1;
+            if (col >= this.lines[line - 1].length) {
+                this.cursor.col = this.lines[line - 1].length;
+            }
+        }
+    }
+
+    _moveDown() {
+        const { line, col } = this.cursor;
+
+        if (line < this.lines.length - 1) {
+            this.cursor.line += 1;
+            if (col >= this.lines[line + 1].length) {
+                this.cursor.col = this.lines[line + 1].length;
+            }
+        }
     }
 
     render() {
