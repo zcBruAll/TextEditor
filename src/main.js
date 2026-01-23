@@ -16,3 +16,5 @@ window.addEventListener("resize", resize);
 resize();
 
 window.addEventListener("keydown", (e) => editor.onKeyDown(e));
+
+setInterval(() => editor.toggleCaret(), 500);

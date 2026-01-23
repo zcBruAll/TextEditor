@@ -14,6 +14,9 @@ export class Editor {
 
         this.cursor = { line: 0, col: 0 };
 
+        this.caretVisible = true;
+        this.skipCaretChange = false;
+
         this._measure();
     }
 
@@ -29,6 +32,17 @@ export class Editor {
         this.charWidth = ctx.measureText("M").width;
     }
 
+    toggleCaret() {
+        if (!this.skipCaretChange) this.caretVisible = !this.caretVisible;
+        else this.skipCaretChange = false;
+        this.render();
+    }
+
+    ensureVisibleCaret() {
+        this.caretVisible = true;
+        this.skipCaretChange = true;
+    }
+
     onKeyDown(e) {
         if (e.ctrlKey || e.metaKey) {
             // Commands will be implemented later
@@ -40,32 +54,39 @@ export class Editor {
             case "ArrowRight":
                 e.preventDefault();
                 this.cursor.col += 1;
+                this.ensureVisibleCaret();
                 break;
             case "ArrowLeft":
                 e.preventDefault();
                 this.cursor.col -= 1;
+                this.ensureVisibleCaret();
                 break;
             case "ArrowUp":
                 e.preventDefault();
                 this.cursor.line -= 1;
+                this.ensureVisibleCaret();
                 break;
             case "ArrowDown":
                 e.preventDefault();
                 this.cursor.line += 1;
+                this.ensureVisibleCaret();
                 break;
 
             // Content special keys
             case "Enter":
                 e.preventDefault();
                 this._insertNewLine();
+                this.ensureVisibleCaret();
                 break;
             case "Backspace":
                 e.preventDefault();
                 this._backspace();
+                this.ensureVisibleCaret();
                 break;
             case "Tab":
                 e.preventDefault();
                 this._insertText("  ");
+                this.ensureVisibleCaret();
                 break;
 
             default:
@@ -73,6 +94,7 @@ export class Editor {
                 if (e.key.length == 1) {
                     e.preventDefault();
                     this._insertText(e.key);
+                    this.ensureVisibleCaret();
                 }
                 break;
         }
@@ -137,6 +159,17 @@ export class Editor {
             const x = this.padding;
             const y = this.padding + i * this.lineHeight;
             ctx.fillText(this.lines[i] ?? "", x, y);
+        }
+
+        // Caret
+        if (this.caretVisible) {
+            const cx = this.padding + this.cursor.col * this.charWidth;
+            const cy = this.padding + this.cursor.line * this.lineHeight - 2;
+
+            if (cx >= -2 && cx <= w + 2 && cy >= -this.lineHeight && cy <= h + this.lineHeight) {
+                ctx.fillStyle = "#ffffffff";
+                ctx.fillRect(cx, cy, 2, this.lineHeight);
+            }
         }
     }
 }
