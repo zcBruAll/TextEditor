@@ -10,7 +10,27 @@ export class Editor {
         this.lineHeight = 20;
         this.fontFamily = "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace";
 
-        this.lines = [];
+        this.lines = [
+            "Custom text-editor - A completely hand-made editor",
+            "It's not a \"serious\" project as it's mainly to be able to say I've made one.",
+            "",
+            "What's implemented:",
+            "  - Prints printable characters",
+            "  - Arrows handling",
+            "  - Enter",
+            "  - Backspace",
+            "  - Tab",
+            "  - Home + End (with Ctrl)",
+            "  - Page Up / Down (with Ctrl)",
+            "",
+            "Will be implemented:",
+            "  - Selection of text",
+            "  - Ctrl commands (Ctrl+A, etc.)",
+            "  - Shift commands (Shift+End, etc.)",
+            "  - Colors",
+            "  - Syntax highlight",
+            "  - And maybe much more!"
+        ];
 
         this.cursor = { line: 0, col: 0 };
         this.scrollY = 0;
