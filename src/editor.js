@@ -63,6 +63,25 @@ export class Editor {
         this.skipCaretChange = true;
     }
 
+    // Mouse inputs
+    onMouseDown(e) {
+        this._ensureVisibleCaret();
+        const pos = this._posFromMouseEvent(e);
+        this.cursor = pos;
+        this._ensureVisibleCursor();
+        this.render();
+    }
+
+    onWheel(e) {
+        e.preventDefault();
+        this.scrollY = this._clamp(this.scrollY + e.deltaY, 0, (this.lines.length - 1) * this.lineHeight);
+
+        console.log(this.lines.length);
+        console.log(this.lineHeight);
+        this.render();
+    }
+
+    // Keyboard inputs
     onKeyDown(e) {
         if (e.ctrlKey || e.metaKey) {
             // Commands will be implemented later
@@ -209,6 +228,34 @@ export class Editor {
                 this.cursor.col = this.lines[line + 1].length;
             }
         }
+    }
+
+    _posFromMouseEvent(e) {
+        const rect = this.canvas.getBoundingClientRect();
+
+        const x = e.clientX - rect.left;
+        const y = e.clientY - rect.top;
+
+        const contentX = x + this.scrollX - this.padding;
+        const contentY = y + this.scrollY - this.padding;
+
+        const line = this._clamp(
+            Math.floor(contentY / this.lineHeight),
+            0,
+            this.lines.length - 1
+        );
+
+        const col = this._clamp(
+            Math.round(contentX / this.charWidth),
+            0,
+            (this.lines[line] ?? "").length
+        );
+
+        return { line, col };
+    }
+
+    _clamp(value, low, high) {
+        return Math.max(low, Math.min(high, value));
     }
 
     render() {

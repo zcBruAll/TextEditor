@@ -17,4 +17,7 @@ resize();
 
 window.addEventListener("keydown", (e) => editor.onKeyDown(e));
 
+canvas.addEventListener("mousedown", (e) => editor.onMouseDown(e));
+canvas.addEventListener("wheel", (e) => editor.onWheel(e), { passive: false });
+
 setInterval(() => editor.toggleCaret(), 500);
