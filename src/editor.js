@@ -122,6 +122,11 @@ export class Editor {
                 this._backspace();
                 this._ensureVisibleCaret();
                 break;
+            case "Delete":
+                e.preventDefault();
+                this._delete();
+                this._ensureVisibleCaret();
+                break;
             case "Tab":
                 e.preventDefault();
                 this._insertText("  ");
@@ -178,6 +183,22 @@ export class Editor {
         this.lines.splice(line, 1);
         this.cursor.line -= 1;
         this.cursor.col = prev.length;
+    }
+
+    _delete() {
+        const { line, col } = this.cursor;
+        if (line === this.lines.length - 1 && col === this.lines[line].length) return;
+
+        const s = this.lines[line];
+        if (col < this.lines[line].length) {
+            this.lines[line] = s.slice(0, col) + s.slice(col + 1);
+            return;
+        }
+
+        // Merge next line when col === line.length
+        const next = (this.lines[line + 1] ?? "");
+        this.lines[line] = s + next;
+        this.lines.splice(line + 1, 1);
     }
 
     // Cursor movement
