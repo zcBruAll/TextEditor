@@ -75,18 +75,13 @@ export class Editor {
     onWheel(e) {
         e.preventDefault();
         this.scrollY = this._clamp(this.scrollY + e.deltaY, 0, (this.lines.length - 1) * this.lineHeight);
-
-        console.log(this.lines.length);
-        console.log(this.lineHeight);
         this.render();
     }
 
     // Keyboard inputs
     onKeyDown(e) {
-        if (e.ctrlKey || e.metaKey) {
-            // Commands will be implemented later
-            return;
-        }
+        const ctrl = e.ctrlKey || e.metaKey;
+        const shift = e.shiftKey;
 
         switch (e.key) {
             // Arrows
@@ -108,6 +103,27 @@ export class Editor {
             case "ArrowDown":
                 e.preventDefault();
                 this._moveDown();
+                this._ensureVisibleCaret();
+                break;
+
+            case "End":
+                e.preventDefault();
+                this._moveEnd({ ctrl, shift });
+                this._ensureVisibleCaret();
+                break;
+            case "Home":
+                e.preventDefault();
+                this._moveHome({ ctrl, shift });
+                this._ensureVisibleCaret();
+                break;
+            case "PageUp":
+                e.preventDefault();
+                this._movePageUp({ ctrl, shift });
+                this._ensureVisibleCaret();
+                break;
+            case "PageDown":
+                e.preventDefault();
+                this._movePageDown({ ctrl, shift });
                 this._ensureVisibleCaret();
                 break;
 
@@ -251,6 +267,87 @@ export class Editor {
         }
     }
 
+    _moveEnd({ ctrl, shift }) {
+        const { line, col } = this.cursor;
+
+        if (ctrl) {
+            this.cursor.line = this.lines.length - 1;
+            this.cursor.col = this.lines[this.lines.length - 1].length;
+        } else {
+            this.cursor.col = this.lines[line].length;
+        }
+
+        if (shift) {
+            // Save final cursor position
+        }
+    }
+
+    _moveHome({ ctrl, shift }) {
+        const { line, col } = this.cursor;
+
+        this.cursor.col = 0;
+
+        if (ctrl) {
+            this.cursor.line = 0;
+        }
+
+        if (shift) {
+            // Save final cursor position
+        }
+    }
+
+    _movePageUp({ ctrl, shift }) {
+        const { line, col } = this.cursor;
+
+        const h = this.canvas.height / this.dpr;
+        const linesPerPage = Math.floor((h + this.lineHeight) / this.lineHeight);
+
+        let minLine = 0;
+
+        if (ctrl) {
+            // Theorically works but un-testable on browser, it captures it first
+            minLine = Math.max(0, Math.floor(this.scrollY / this.lineHeight));
+        }
+
+        this.cursor.line = Math.max(minLine, line - linesPerPage);
+
+        if (line - linesPerPage < 0) {
+            this.cursor.col = 0;
+        } else {
+            this.cursor.col = Math.min(this.lines[this.cursor.line].length, col);
+        }
+
+        if (shift) {
+            // Save final cursor position
+        }
+    }
+
+    _movePageDown({ ctrl, shift }) {
+        const { line, col } = this.cursor;
+
+        const h = this.canvas.height / this.dpr;
+        const linesPerPage = Math.floor((h + this.lineHeight) / this.lineHeight);
+
+        let maxLine = this.lines.length - 1;
+
+        if (ctrl) {
+            // Theorically works but un-testable on browser, it captures it first
+            maxLine = Math.min(this.lines.length, startLine + Math.ceil((h + this.lineHeight) / this.lineHeight));
+        }
+
+        this.cursor.line = Math.min(line + linesPerPage, maxLine);
+
+        if (line + linesPerPage > this.lines.length - 1) {
+            this.cursor.col = this.lines[this.lines.length - 1].length;
+        } else {
+            this.cursor.col = Math.min(this.lines[this.cursor.line].length, col);
+        }
+
+        if (shift) {
+            // Save final cursor position
+        }
+    }
+
     _posFromMouseEvent(e) {
         const rect = this.canvas.getBoundingClientRect();
 
@@ -307,7 +404,6 @@ export class Editor {
 
         // Caret
         if (this.caretVisible) {
-            console.log(`${this.scrollX} ${this.scrollY}`);
             const cx = this.padding + this.cursor.col * this.charWidth - this.scrollX;
             const cy = this.padding + this.cursor.line * this.lineHeight - 2 - this.scrollY;
 
