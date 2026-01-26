@@ -24,9 +24,9 @@ export class Editor {
             "  - Page Up / Down (with Ctrl)",
             "  - Selection of text",
             "  - Shift commands (Shift+End, etc.)",
+            "  - Ctrl commands (Ctrl+A, etc.)",
             "",
             "Will be implemented:",
-            "  - Ctrl commands (Ctrl+A, etc.)",
             "  - Colors",
             "  - Syntax highlight",
             "  - And maybe much more!"
@@ -192,8 +192,12 @@ export class Editor {
             default:
                 // Printable characters
                 if (e.key.length == 1) {
-                    e.preventDefault();
-                    this._insertText(e.key);
+                    if (ctrl) {
+                        this._handleCommand(e);
+                    } else {
+                        e.preventDefault();
+                        this._insertText(e.key);
+                    }
                     this._ensureVisibleCaret();
                 }
                 break;
@@ -214,6 +218,43 @@ export class Editor {
         } else {
             this.inSelection = false;
         }
+    }
+
+    _handleCommand(e) {
+        switch (e.key) {
+            case "a":
+                e.preventDefault();
+                const lastLine = this.lines[this.lines.length - 1] ?? "";
+                this.cursor = { line: this.lines.length - 1, col: lastLine.length };
+                this.inSelection = true;
+                this.selection = { start: { line: 0, col: 0 }, end: { line: this.lines.length - 1, col: lastLine.length } };
+                break;
+            default:
+                break;
+        }
+    }
+
+    _getSelectionText() {
+        if (!this.inSelection) return "";
+
+        let selStart = this.selection.start;
+        let selEnd = this.selection.end;
+
+        if (selStart.line > selEnd.line || (selStart.line == selEnd.line && selStart.col > selEnd.col)) {
+            [selStart, selEnd] = [selEnd, selStart];
+        }
+
+        if (selStart.line == selEnd.line) {
+            return (this.lines[selStart.line]).slice(selStart.col, selEnd.col + 1);
+        }
+
+        const text = [];
+        text.push((this.lines[selStart.line] ?? "").slice(selStart.col));
+        for (let i = selStart.line + 1; i < selEnd.line; i++) {
+            text.push(this.lines[i] ?? "");
+        }
+        text.push((this.lines[selEnd.line] ?? "").slice(0, selEnd.col));
+        return text.join("\n");
     }
 
     // Text management
