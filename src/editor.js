@@ -22,11 +22,11 @@ export class Editor {
             "  - Tab",
             "  - Home + End (with Ctrl)",
             "  - Page Up / Down (with Ctrl)",
+            "  - Selection of text",
+            "  - Shift commands (Shift+End, etc.)",
             "",
             "Will be implemented:",
-            "  - Selection of text",
             "  - Ctrl commands (Ctrl+A, etc.)",
-            "  - Shift commands (Shift+End, etc.)",
             "  - Colors",
             "  - Syntax highlight",
             "  - And maybe much more!"
@@ -38,6 +38,9 @@ export class Editor {
 
         this.caretVisible = true;
         this.skipCaretChange = false;
+
+        this.inSelection = false;
+        this.selection = { start: { line: 0, col: 0 }, end: { line: 0, col: 0 } };
 
         this._measure();
     }
@@ -85,9 +88,26 @@ export class Editor {
 
     // Mouse inputs
     onMouseDown(e) {
+        const ctrl = e.ctrlKey || e.metaKey;
+        const shift = e.shiftKey;
+
         this._ensureVisibleCaret();
         const pos = this._posFromMouseEvent(e);
+        const { line, col } = this.cursor;
         this.cursor = pos;
+        this._selectToCursor(shift, line, col);
+        this._ensureVisibleCursor();
+        this.render();
+    }
+
+    onMouseMove(e) {
+        if (e.buttons != 1) return;
+        e.preventDefault();
+        this._ensureVisibleCaret();
+        const pos = this._posFromMouseEvent(e);
+        const { line, col } = this.cursor;
+        this.cursor = pos;
+        this._selectToCursor(true, line, col);
         this._ensureVisibleCursor();
         this.render();
     }
@@ -100,29 +120,27 @@ export class Editor {
 
     // Keyboard inputs
     onKeyDown(e) {
-        const ctrl = e.ctrlKey || e.metaKey;
-        const shift = e.shiftKey;
 
         switch (e.key) {
             // Arrows
             case "ArrowRight":
                 e.preventDefault();
-                this._moveRight();
+                this._moveRight({ ctrl, shift });
                 this._ensureVisibleCaret();
                 break;
             case "ArrowLeft":
                 e.preventDefault();
-                this._moveLeft();
+                this._moveLeft({ ctrl, shift });
                 this._ensureVisibleCaret();
                 break;
             case "ArrowUp":
                 e.preventDefault();
-                this._moveUp();
+                this._moveUp({ ctrl, shift });
                 this._ensureVisibleCaret();
                 break;
             case "ArrowDown":
                 e.preventDefault();
-                this._moveDown();
+                this._moveDown({ ctrl, shift });
                 this._ensureVisibleCaret();
                 break;
 
@@ -155,12 +173,12 @@ export class Editor {
                 break;
             case "Backspace":
                 e.preventDefault();
-                this._backspace();
+                this._backspace({ ctrl, shift });
                 this._ensureVisibleCaret();
                 break;
             case "Delete":
                 e.preventDefault();
-                this._delete();
+                this._delete({ ctrl, shift });
                 this._ensureVisibleCaret();
                 break;
             case "Tab":
@@ -183,6 +201,19 @@ export class Editor {
         this.render();
     }
 
+    _selectToCursor(shift, line, col) {
+        if (shift) {
+            if (this.inSelection) {
+                this.selection.end = this.cursor;
+            } else {
+                this.inSelection = true;
+                this.selection = { start: { line, col }, end: this.cursor };
+            }
+        } else {
+            this.inSelection = false;
+        }
+    }
+
     // Text management
     _insertText(text) {
         const { line, col } = this.cursor;
@@ -202,7 +233,7 @@ export class Editor {
         this.cursor.col = 0;
     }
 
-    _backspace() {
+    _backspace({ ctrl, shift }) {
         const { line, col } = this.cursor;
         if (line === 0 && col === 0) return;
 
@@ -221,7 +252,7 @@ export class Editor {
         this.cursor.col = prev.length;
     }
 
-    _delete() {
+    _delete({ ctrl, shift }) {
         const { line, col } = this.cursor;
         if (line === this.lines.length - 1 && col === this.lines[line].length) return;
 
@@ -238,34 +269,34 @@ export class Editor {
     }
 
     // Cursor movement
-    _moveLeft() {
+    _moveLeft({ ctrl, shift }) {
         const { line, col } = this.cursor;
 
         if (col > 0) {
             this.cursor.col -= 1;
-            return;
-        }
-        if (line > 0) {
+        } else if (line > 0) {
             this.cursor.line -= 1;
             this.cursor.col = (this.lines[this.cursor.line] ?? "").length;
         }
+
+        this._selectToCursor(shift, line, col);
     }
 
-    _moveRight() {
+    _moveRight({ ctrl, shift }) {
         const { line, col } = this.cursor;
         const length = (this.lines[line] ?? "").length
 
         if (col < length) {
             this.cursor.col += 1;
-            return;
-        }
-        if (line < this.lines.length - 1) {
+        } else if (line < this.lines.length - 1) {
             this.cursor.line += 1;
             this.cursor.col = 0;
         }
+
+        this._selectToCursor(shift, line, col);
     }
 
-    _moveUp() {
+    _moveUp({ ctrl, shift }) {
         const { line, col } = this.cursor;
 
         if (line > 0) {
@@ -274,9 +305,11 @@ export class Editor {
                 this.cursor.col = this.lines[line - 1].length;
             }
         }
+
+        this._selectToCursor(shift, line, col);
     }
 
-    _moveDown() {
+    _moveDown({ ctrl, shift }) {
         const { line, col } = this.cursor;
 
         if (line < this.lines.length - 1) {
@@ -285,6 +318,8 @@ export class Editor {
                 this.cursor.col = this.lines[line + 1].length;
             }
         }
+
+        this._selectToCursor(shift, line, col);
     }
 
     _moveEnd({ ctrl, shift }) {
@@ -297,9 +332,7 @@ export class Editor {
             this.cursor.col = this.lines[line].length;
         }
 
-        if (shift) {
-            // Save final cursor position
-        }
+        this._selectToCursor(shift, line, col);
     }
 
     _moveHome({ ctrl, shift }) {
@@ -311,9 +344,7 @@ export class Editor {
             this.cursor.line = 0;
         }
 
-        if (shift) {
-            // Save final cursor position
-        }
+        this._selectToCursor(shift, line, col);
     }
 
     _movePageUp({ ctrl, shift }) {
@@ -337,9 +368,7 @@ export class Editor {
             this.cursor.col = Math.min(this.lines[this.cursor.line].length, col);
         }
 
-        if (shift) {
-            // Save final cursor position
-        }
+        this._selectToCursor(shift, line, col);
     }
 
     _movePageDown({ ctrl, shift }) {
@@ -363,9 +392,7 @@ export class Editor {
             this.cursor.col = Math.min(this.lines[this.cursor.line].length, col);
         }
 
-        if (shift) {
-            // Save final cursor position
-        }
+        this._selectToCursor(shift, line, col);
     }
 
     _posFromMouseEvent(e) {
@@ -411,14 +438,30 @@ export class Editor {
         // Text
         ctx.font = `${this.fontSize}px ${this.fontFamily}`;
         ctx.textBaseline = "top";
-        ctx.fillStyle = "#ffffffff";
 
         const startLine = Math.max(0, Math.floor(this.scrollY / this.lineHeight));
         const endLine = Math.min(this.lines.length, startLine + Math.ceil((h + this.lineHeight) / this.lineHeight));
 
+        // Selection on displayed lines
+        let selStart = this.selection.start;
+        let selEnd = this.selection.end;
+        if (this.selection.start.line > this.selection.end.line || (this.selection.start.line == this.selection.end.line && this.selection.start.col > this.selection.end.col)) {
+            selStart = this.selection.end;
+            selEnd = this.selection.start;
+        }
+
         for (let i = startLine; i < endLine; i++) {
             const x = this.padding - this.scrollX;
             const y = this.padding + i * this.lineHeight - this.scrollY;
+
+            if (this.inSelection && selStart.line <= i && selEnd.line >= i) {
+                const selColStart = selStart.line < i ? 0 : selStart.col;
+                const selColEnd = selEnd.line > i ? this.lines[i].length : selEnd.col;
+                ctx.fillStyle = "rgba(255, 255, 255, 0.5)"
+                ctx.fillRect(x + selColStart * this.charWidth, y - 1, (selColEnd - selColStart) * this.charWidth, this.lineHeight - 2);
+            }
+
+            ctx.fillStyle = "#ffffffff";
             ctx.fillText(this.lines[i], x, y);
         }
 
