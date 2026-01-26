@@ -181,6 +181,7 @@ export class Editor {
                 break;
             case "Backspace":
                 e.preventDefault();
+                this._backspace({ ctrl, shift });
                 this._ensureVisibleCaret();
                 break;
             case "Delete":
