@@ -217,7 +217,42 @@ export class Editor {
     }
 
     // Text management
+    _deleteSelection() {
+        if (!this.inSelection) return;
+        this.inSelection = false;
+
+        let selStart = this.selection.start;
+        let selEnd = this.selection.end;
+
+        if (selStart.line == selEnd.line && selStart.col == selEnd.col) return;
+
+        if (selStart.line > selEnd.line || (selStart.line == selEnd.line && selStart.col > selEnd.col)) {
+            [selStart, selEnd] = [selEnd, selStart];
+        }
+
+        const startLine = selStart.line;
+        const endLine = selEnd.line;
+        const startCol = selStart.col;
+        const endCol = selEnd.col;
+
+        const first = this.lines[startLine] ?? "";
+        const last = this.lines[endLine] ?? "";
+
+        const prefix = first.slice(0, startCol);
+        const suffix = last.slice(endCol);
+
+        const mergedLine = prefix + suffix;
+
+        const deleteCount = endLine - startLine + 1;
+        this.lines.splice(startLine, deleteCount, mergedLine);
+
+        this.cursor.line = startLine;
+        this.cursor.col = startCol;
+    }
+
     _insertText(text) {
+        this._deleteSelection();
+
         const { line, col } = this.cursor;
         const s = this.lines[line] ?? "";
         this.lines[line] = s.slice(0, col) + text + s.slice(col);
@@ -225,6 +260,8 @@ export class Editor {
     }
 
     _insertNewLine() {
+        this._deleteSelection();
+
         const { line, col } = this.cursor;
         const s = this.lines[line] ?? "";
         const left = s.slice(0, col);
@@ -236,6 +273,11 @@ export class Editor {
     }
 
     _backspace({ ctrl, shift }) {
+        if (this.inSelection) {
+            this._deleteSelection();
+            return;
+        }
+
         const { line, col } = this.cursor;
         if (line === 0 && col === 0) return;
 
@@ -255,6 +297,11 @@ export class Editor {
     }
 
     _delete({ ctrl, shift }) {
+        if (this.inSelection) {
+            this._deleteSelection();
+            return;
+        };
+
         const { line, col } = this.cursor;
         if (line === this.lines.length - 1 && col === this.lines[line].length) return;
 
