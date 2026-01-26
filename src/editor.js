@@ -120,6 +120,8 @@ export class Editor {
 
     // Keyboard inputs
     onKeyDown(e) {
+        const ctrl = e.ctrlKey || e.metaKey;
+        const shift = e.shiftKey;
 
         switch (e.key) {
             // Arrows
