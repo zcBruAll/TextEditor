@@ -294,10 +294,23 @@ export class Editor {
     _insertText(text) {
         this._deleteSelection();
 
+        const lines = text.replace(/\r/g, "").split("\n");
+
         const { line, col } = this.cursor;
         const s = this.lines[line] ?? "";
-        this.lines[line] = s.slice(0, col) + text + s.slice(col);
-        this.cursor.col += text.length;
+
+        if (lines.length == 1) {
+            this.lines[line] = s.slice(0, col) + text + s.slice(col);
+            this.cursor.col += text.length;
+        } else {
+            const prefix = s.slice(0, col) + lines[0];
+            const suffix = lines[lines.length - 1] + s.slice(col);
+
+            this.lines.splice(line, 1, prefix, ...lines.slice(1, -1), suffix);
+
+            this.cursor.line = line + lines.length - 1;
+            this.cursor.col = lines[lines.length - 1].length;
+        }
     }
 
     _insertNewLine() {
