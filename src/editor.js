@@ -42,7 +42,13 @@ export class Editor {
         this.inSelection = false;
         this.selection = { start: { line: 0, col: 0 }, end: { line: 0, col: 0 } };
 
+        this.specialChars = [" ", "+", "-"];
+
         this._measure();
+    }
+
+    isSpecialChar(char) {
+        return this.specialChars.includes(char);
     }
 
     setDpr(dpr) {
@@ -175,7 +181,6 @@ export class Editor {
                 break;
             case "Backspace":
                 e.preventDefault();
-                this._backspace({ ctrl, shift });
                 this._ensureVisibleCaret();
                 break;
             case "Delete":
@@ -375,12 +380,36 @@ export class Editor {
     _moveLeft({ ctrl, shift }) {
         const { line, col } = this.cursor;
 
-        if (col > 0) {
-            this.cursor.col -= 1;
-        } else if (line > 0) {
-            this.cursor.line -= 1;
-            this.cursor.col = (this.lines[this.cursor.line] ?? "").length;
+        if (!ctrl) {
+            if (col > 0) {
+                this.cursor.col -= 1;
+            } else if (line > 0) {
+                this.cursor.line -= 1;
+                this.cursor.col = (this.lines[this.cursor.line] ?? "").length;
+            }
+
+            this._selectToCursor(shift, line, col);
+
+            return;
         }
+
+        if (col == 0) {
+            if (line > 0) {
+                this.cursor.line -= 1;
+                this.cursor.col = (this.lines[this.cursor.line] ?? "").length;
+            }
+
+            this._selectToCursor(shift, line, col);
+            return;
+        }
+
+        let i = col - 1;
+
+        while (i >= 0 && this.isSpecialChar(this.lines[line][i])) i--;
+
+        while (i >= 0 && !this.isSpecialChar(this.lines[line][i])) i--;
+
+        this.cursor.col = i + 1;
 
         this._selectToCursor(shift, line, col);
     }
@@ -389,12 +418,36 @@ export class Editor {
         const { line, col } = this.cursor;
         const length = (this.lines[line] ?? "").length
 
-        if (col < length) {
-            this.cursor.col += 1;
-        } else if (line < this.lines.length - 1) {
-            this.cursor.line += 1;
-            this.cursor.col = 0;
+        if (!ctrl) {
+            if (col < length) {
+                this.cursor.col += 1;
+            } else if (line < this.lines.length - 1) {
+                this.cursor.line += 1;
+                this.cursor.col = 0;
+            }
+
+            this._selectToCursor(shift, line, col);
+
+            return;
         }
+
+        if (col == length) {
+            if (line < this.lines.length) {
+                this.cursor.line += 1;
+                this.cursor.col = 0;
+            }
+
+            this._selectToCursor(shift, line, col);
+            return;
+        }
+
+        let i = col + 1;
+
+        while (i < length && this.isSpecialChar(this.lines[line][i])) i++;
+
+        while (i < length && !this.isSpecialChar(this.lines[line][i])) i++;
+
+        this.cursor.col = i + 1;
 
         this._selectToCursor(shift, line, col);
     }
