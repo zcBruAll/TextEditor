@@ -343,8 +343,23 @@ export class Editor {
 
         const s = this.lines[line] ?? "";
         if (col > 0) {
-            this.lines[line] = s.slice(0, col - 1) + s.slice(col);
-            this.cursor.col -= 1;
+            if (!ctrl) {
+                this.lines[line] = s.slice(0, col - 1) + s.slice(col);
+                this.cursor.col -= 1;
+                return;
+            }
+
+            let i = col - 1;
+            while (i >= 0 && this.isSpecialChar(this.lines[line][i])) {
+                i--;
+            }
+            while (i >= 0 && !this.isSpecialChar(this.lines[line][i])) {
+                i--;
+            }
+
+            const newCol = i + 1;
+            this.lines[line] = s.slice(0, newCol) + s.slice(col);
+            this.cursor.col = newCol;
             return;
         }
 
@@ -360,19 +375,29 @@ export class Editor {
         if (this.inSelection) {
             this._deleteSelection();
             return;
-        };
+        }
 
         const { line, col } = this.cursor;
-        if (line === this.lines.length - 1 && col === this.lines[line].length) return;
+        if (line === this.lines.length - 1 && col === this.lines[line].length)
+            return;
 
         const s = this.lines[line];
-        if (col < this.lines[line].length) {
-            this.lines[line] = s.slice(0, col) + s.slice(col + 1);
+        const length = this.lines[line].length
+        if (col < length) {
+            if (!ctrl) {
+                this.lines[line] = s.slice(0, col) + s.slice(col + 1);
+                return;
+            }
+
+            let i = col;
+            while (i < length && !this.isSpecialChar(this.lines[line][i])) i++;
+            while (i < length && this.isSpecialChar(this.lines[line][i])) i++;
+            this.lines[line] = s.slice(0, col) + s.slice(i);
             return;
         }
 
         // Merge next line when col === line.length
-        const next = (this.lines[line + 1] ?? "");
+        const next = this.lines[line + 1] ?? "";
         this.lines[line] = s + next;
         this.lines.splice(line + 1, 1);
     }
@@ -417,7 +442,7 @@ export class Editor {
 
     _moveRight({ ctrl, shift }) {
         const { line, col } = this.cursor;
-        const length = (this.lines[line] ?? "").length
+        const length = (this.lines[line] ?? "").length;
 
         if (!ctrl) {
             if (col < length) {
@@ -444,11 +469,11 @@ export class Editor {
 
         let i = col + 1;
 
-        while (i < length && this.isSpecialChar(this.lines[line][i])) i++;
-
         while (i < length && !this.isSpecialChar(this.lines[line][i])) i++;
 
-        this.cursor.col = i + 1;
+        while (i < length && this.isSpecialChar(this.lines[line][i])) i++;
+
+        this.cursor.col = Math.min(length, i);
 
         this._selectToCursor(shift, line, col);
     }
@@ -458,8 +483,20 @@ export class Editor {
 
         if (line > 0) {
             this.cursor.line -= 1;
-            if (col >= this.lines[line - 1].length) {
+            if (
+                col > this.lines[line - 1].length ||
+                (this.preferredCursorCol.enable &&
+                    this.preferredCursorCol.col > this.lines[line - 1].length)
+            ) {
+                if (!this.preferredCursorCol.enable) {
+                    this.preferredCursorCol = { enable: true, col };
+                }
                 this.cursor.col = this.lines[line - 1].length;
+            } else if (
+                this.preferredCursorCol.enable &&
+                this.preferredCursorCol.col <= this.lines[line - 1].length
+            ) {
+                this.cursor.col = this.preferredCursorCol.col;
             }
         }
 
@@ -471,8 +508,20 @@ export class Editor {
 
         if (line < this.lines.length - 1) {
             this.cursor.line += 1;
-            if (col >= this.lines[line + 1].length) {
+            if (
+                col >= this.lines[line + 1].length ||
+                (this.preferredCursorCol.enable &&
+                    this.preferredCursorCol.col > this.lines[line + 1].length)
+            ) {
+                if (!this.preferredCursorCol.enable) {
+                    this.preferredCursorCol = { enable: true, col };
+                }
                 this.cursor.col = this.lines[line + 1].length;
+            } else if (
+                this.preferredCursorCol.enable &&
+                this.preferredCursorCol.col <= this.lines[line - 1].length
+            ) {
+                this.cursor.col = this.preferredCursorCol.col;
             }
         }
 
