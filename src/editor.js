@@ -16,9 +16,9 @@ export class Editor {
             "",
             "What's implemented:",
             "  - Prints printable characters",
-            "  - Arrows handling",
+            "  - Arrows handling (with Ctrl)",
             "  - Enter",
-            "  - Backspace",
+            "  - Backspace/Delete (with Ctrl)",
             "  - Tab",
             "  - Home + End (with Ctrl)",
             "  - Page Up / Down (with Ctrl)",
@@ -27,6 +27,7 @@ export class Editor {
             "  - Ctrl commands (Ctrl+A, etc.)",
             "",
             "Will be implemented:",
+            "  - Local save",
             "  - Colors",
             "  - Syntax highlight",
             "  - And maybe much more!"
@@ -481,7 +482,7 @@ export class Editor {
     _moveUp({ ctrl, shift }) {
         const { line, col } = this.cursor;
 
-        if (line > 0) {
+        if (!ctrl && line > 0) {
             this.cursor.line -= 1;
             if (
                 col > this.lines[line - 1].length ||
@@ -498,6 +499,8 @@ export class Editor {
             ) {
                 this.cursor.col = this.preferredCursorCol.col;
             }
+        } else if (ctrl) {
+            this.cursor.col = 0;
         }
 
         this._selectToCursor(shift, line, col);
@@ -506,7 +509,7 @@ export class Editor {
     _moveDown({ ctrl, shift }) {
         const { line, col } = this.cursor;
 
-        if (line < this.lines.length - 1) {
+        if (!ctrl && line < this.lines.length - 1) {
             this.cursor.line += 1;
             if (
                 col >= this.lines[line + 1].length ||
@@ -523,6 +526,8 @@ export class Editor {
             ) {
                 this.cursor.col = this.preferredCursorCol.col;
             }
+        } else if (ctrl) {
+            this.cursor.col = this.lines[line].length;
         }
 
         this._selectToCursor(shift, line, col);
