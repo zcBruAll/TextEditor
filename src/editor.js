@@ -25,9 +25,9 @@ export class Editor {
             "  - Selection of text",
             "  - Shift commands (Shift+End, etc.)",
             "  - Ctrl commands (Ctrl+A, etc.)",
+            "  - Local save",
             "",
             "Will be implemented:",
-            "  - Local save",
             "  - Colors",
             "  - Syntax highlight",
             "  - And maybe much more!"
@@ -349,6 +349,8 @@ export class Editor {
         this.lines[line] = left;
         this.lines.splice(line + 1, 0, right);
         this.setCursor(line + 1, 0);
+
+        localStorage.setItem('editorContent', this.lines.join("\n"));
     }
 
     _backspace({ ctrl, shift }) {
@@ -365,6 +367,8 @@ export class Editor {
             if (!ctrl) {
                 this.lines[line] = s.slice(0, col - 1) + s.slice(col);
                 this.setCursor(line, col - 1);
+
+                localStorage.setItem('editorContent', this.lines.join("\n"));
                 return;
             }
 
@@ -379,6 +383,8 @@ export class Editor {
             const newCol = i + 1;
             this.lines[line] = s.slice(0, newCol) + s.slice(col);
             this.setCursor(line, newCol);
+
+            localStorage.setItem('editorContent', this.lines.join("\n"));
             return;
         }
 
@@ -387,6 +393,8 @@ export class Editor {
         this.lines[line - 1] = prev + s;
         this.lines.splice(line, 1);
         this.setCursor(line - 1, prev.length);
+
+        localStorage.setItem('editorContent', this.lines.join("\n"));
     }
 
     _delete({ ctrl, shift }) {
@@ -404,6 +412,8 @@ export class Editor {
         if (col < length) {
             if (!ctrl) {
                 this.lines[line] = s.slice(0, col) + s.slice(col + 1);
+
+                localStorage.setItem('editorContent', this.lines.join("\n"));
                 return;
             }
 
@@ -411,6 +421,8 @@ export class Editor {
             while (i < length && !this.isSpecialChar(this.lines[line][i])) i++;
             while (i < length && this.isSpecialChar(this.lines[line][i])) i++;
             this.lines[line] = s.slice(0, col) + s.slice(i);
+
+            localStorage.setItem('editorContent', this.lines.join("\n"));
             return;
         }
 
@@ -418,6 +430,8 @@ export class Editor {
         const next = this.lines[line + 1] ?? "";
         this.lines[line] = s + next;
         this.lines.splice(line + 1, 1);
+
+        localStorage.setItem('editorContent', this.lines.join("\n"));
     }
 
     // Cursor movement
