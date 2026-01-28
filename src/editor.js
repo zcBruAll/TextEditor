@@ -49,7 +49,7 @@ export class Editor {
     }
 
     isSpecialChar(char) {
-        return this.specialChars.includes(char);
+        return /\W/.test(char);
     }
 
     setDpr(dpr) {
@@ -70,6 +70,10 @@ export class Editor {
             this.preferredCursorCol = this.cursor.col;
         }
         this.cursor.col = Math.min(this.preferredCursorCol, this.lines[this.cursor.line].length);
+    }
+
+    clearLines() {
+        this.lines = [];
     }
 
     _measure() {
@@ -331,6 +335,8 @@ export class Editor {
 
             this.setCursor(line + lines.length - 1, lines[lines.length - 1].length);
         }
+
+        localStorage.setItem('editorContent', this.lines.join("\n"));
     }
 
     _insertNewLine() {

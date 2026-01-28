@@ -20,6 +20,14 @@ function copy(e) {
     e.clipboardData.setData("text/plain", text);
 }
 
+window.onload = () => {
+    const saved = localStorage.getItem('editorContent');
+    if (saved) {
+        editor.clearLines();
+        editor._insertText(saved);
+    }
+};
+
 window.addEventListener("resize", resize);
 resize();
 
