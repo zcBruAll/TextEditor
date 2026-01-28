@@ -28,6 +28,8 @@ export class Editor {
             "  - Local save",
             "",
             "Will be implemented:",
+            "  - Undo / Redo",
+            "  - Line numbers",
             "  - Colors",
             "  - Syntax highlight",
             "  - And maybe much more!"
@@ -146,6 +148,8 @@ export class Editor {
 
     // Keyboard inputs
     onKeyDown(e) {
+        const alt = e.altKey;
+        if (alt) return;
         const ctrl = e.ctrlKey || e.metaKey;
         const shift = e.shiftKey;
 
@@ -356,6 +360,7 @@ export class Editor {
     _backspace({ ctrl, shift }) {
         if (this.inSelection) {
             this._deleteSelection();
+            localStorage.setItem('editorContent', this.lines.join("\n"));
             return;
         }
 
