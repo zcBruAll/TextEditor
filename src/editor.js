@@ -43,7 +43,7 @@ export class Editor {
         this.inSelection = false;
         this.selection = { start: { line: 0, col: 0 }, end: { line: 0, col: 0 } };
 
-        this.specialChars = [" ", "+", "-"];
+        this.preferredCursorCol = null;
 
         this._measure();
     }
@@ -55,6 +55,21 @@ export class Editor {
     setDpr(dpr) {
         this.dpr = dpr;
         this._measure();
+    }
+
+    setCursor(line, col, usePreferredCol = false) {
+        this.cursor.line = this._clamp(line, 0, this.lines.length);
+
+        if (!usePreferredCol) {
+            this.cursor.col = this._clamp(col, 0, this.lines[this.cursor.line].length);
+            this.preferredCursorCol = null;
+            return;
+        }
+
+        if (!this.preferredCursorCol) {
+            this.preferredCursorCol = this.cursor.col;
+        }
+        this.cursor.col = Math.min(this.preferredCursorCol, this.lines[this.cursor.line].length);
     }
 
     _measure() {
@@ -101,7 +116,7 @@ export class Editor {
         this._ensureVisibleCaret();
         const pos = this._posFromMouseEvent(e);
         const { line, col } = this.cursor;
-        this.cursor = pos;
+        this.setCursor(pos.line, pos.col);
         this._selectToCursor(shift, line, col);
         this._ensureVisibleCursor();
         this.render();
@@ -113,7 +128,7 @@ export class Editor {
         this._ensureVisibleCaret();
         const pos = this._posFromMouseEvent(e);
         const { line, col } = this.cursor;
-        this.cursor = pos;
+        this.setCursor(pos.line, pos.col);
         this._selectToCursor(true, line, col);
         this._ensureVisibleCursor();
         this.render();
@@ -232,7 +247,7 @@ export class Editor {
             case "a":
                 e.preventDefault();
                 const lastLine = this.lines[this.lines.length - 1] ?? "";
-                this.cursor = { line: this.lines.length - 1, col: lastLine.length };
+                this.setCursor(this.lines.length - 1, lastLine.length);
                 this.inSelection = true;
                 this.selection = { start: { line: 0, col: 0 }, end: { line: this.lines.length - 1, col: lastLine.length } };
                 break;
@@ -294,8 +309,7 @@ export class Editor {
         const deleteCount = endLine - startLine + 1;
         this.lines.splice(startLine, deleteCount, mergedLine);
 
-        this.cursor.line = startLine;
-        this.cursor.col = startCol;
+        this.setCursor(startLine, startCol);
     }
 
     _insertText(text) {
@@ -308,15 +322,14 @@ export class Editor {
 
         if (lines.length == 1) {
             this.lines[line] = s.slice(0, col) + text + s.slice(col);
-            this.cursor.col += text.length;
+            this.setCursor(line, col + text.length);
         } else {
             const prefix = s.slice(0, col) + lines[0];
             const suffix = lines[lines.length - 1] + s.slice(col);
 
             this.lines.splice(line, 1, prefix, ...lines.slice(1, -1), suffix);
 
-            this.cursor.line = line + lines.length - 1;
-            this.cursor.col = lines[lines.length - 1].length;
+            this.setCursor(line + lines.length - 1, lines[lines.length - 1].length);
         }
     }
 
@@ -329,8 +342,7 @@ export class Editor {
         const right = s.slice(col);
         this.lines[line] = left;
         this.lines.splice(line + 1, 0, right);
-        this.cursor.line += 1;
-        this.cursor.col = 0;
+        this.setCursor(line + 1, 0);
     }
 
     _backspace({ ctrl, shift }) {
@@ -346,7 +358,7 @@ export class Editor {
         if (col > 0) {
             if (!ctrl) {
                 this.lines[line] = s.slice(0, col - 1) + s.slice(col);
-                this.cursor.col -= 1;
+                this.setCursor(line, col - 1);
                 return;
             }
 
@@ -360,7 +372,7 @@ export class Editor {
 
             const newCol = i + 1;
             this.lines[line] = s.slice(0, newCol) + s.slice(col);
-            this.cursor.col = newCol;
+            this.setCursor(line, newCol);
             return;
         }
 
@@ -368,8 +380,7 @@ export class Editor {
         const prev = this.lines[line - 1] ?? "";
         this.lines[line - 1] = prev + s;
         this.lines.splice(line, 1);
-        this.cursor.line -= 1;
-        this.cursor.col = prev.length;
+        this.setCursor(line - 1, prev.length);
     }
 
     _delete({ ctrl, shift }) {
@@ -409,10 +420,9 @@ export class Editor {
 
         if (!ctrl) {
             if (col > 0) {
-                this.cursor.col -= 1;
+                this.setCursor(line, col - 1);
             } else if (line > 0) {
-                this.cursor.line -= 1;
-                this.cursor.col = (this.lines[this.cursor.line] ?? "").length;
+                this.cursor(line - 1, (this.lines[this.cursor.line] ?? "").length);
             }
 
             this._selectToCursor(shift, line, col);
@@ -422,8 +432,7 @@ export class Editor {
 
         if (col == 0) {
             if (line > 0) {
-                this.cursor.line -= 1;
-                this.cursor.col = (this.lines[this.cursor.line] ?? "").length;
+                this.setCursor(line - 1, (this.lines[this.cursor.line] ?? "").length);
             }
 
             this._selectToCursor(shift, line, col);
@@ -431,12 +440,9 @@ export class Editor {
         }
 
         let i = col - 1;
-
         while (i >= 0 && this.isSpecialChar(this.lines[line][i])) i--;
-
         while (i >= 0 && !this.isSpecialChar(this.lines[line][i])) i--;
-
-        this.cursor.col = i + 1;
+        this.setCursor(line, i + 1);
 
         this._selectToCursor(shift, line, col);
     }
@@ -447,10 +453,9 @@ export class Editor {
 
         if (!ctrl) {
             if (col < length) {
-                this.cursor.col += 1;
+                this.setCursor(line, col + 1);
             } else if (line < this.lines.length - 1) {
-                this.cursor.line += 1;
-                this.cursor.col = 0;
+                this.setCursor(line + 1, 0);
             }
 
             this._selectToCursor(shift, line, col);
@@ -460,8 +465,7 @@ export class Editor {
 
         if (col == length) {
             if (line < this.lines.length) {
-                this.cursor.line += 1;
-                this.cursor.col = 0;
+                this.setCursor(line + 1, 0);
             }
 
             this._selectToCursor(shift, line, col);
@@ -469,12 +473,9 @@ export class Editor {
         }
 
         let i = col + 1;
-
         while (i < length && !this.isSpecialChar(this.lines[line][i])) i++;
-
         while (i < length && this.isSpecialChar(this.lines[line][i])) i++;
-
-        this.cursor.col = Math.min(length, i);
+        this.setCursor(line, Math.min(length, i));
 
         this._selectToCursor(shift, line, col);
     }
@@ -483,24 +484,9 @@ export class Editor {
         const { line, col } = this.cursor;
 
         if (!ctrl && line > 0) {
-            this.cursor.line -= 1;
-            if (
-                col > this.lines[line - 1].length ||
-                (this.preferredCursorCol.enable &&
-                    this.preferredCursorCol.col > this.lines[line - 1].length)
-            ) {
-                if (!this.preferredCursorCol.enable) {
-                    this.preferredCursorCol = { enable: true, col };
-                }
-                this.cursor.col = this.lines[line - 1].length;
-            } else if (
-                this.preferredCursorCol.enable &&
-                this.preferredCursorCol.col <= this.lines[line - 1].length
-            ) {
-                this.cursor.col = this.preferredCursorCol.col;
-            }
+            this.setCursor(line - 1, col, true);
         } else if (ctrl) {
-            this.cursor.col = 0;
+            this.setCursor(line, 0);
         }
 
         this._selectToCursor(shift, line, col);
@@ -510,24 +496,9 @@ export class Editor {
         const { line, col } = this.cursor;
 
         if (!ctrl && line < this.lines.length - 1) {
-            this.cursor.line += 1;
-            if (
-                col >= this.lines[line + 1].length ||
-                (this.preferredCursorCol.enable &&
-                    this.preferredCursorCol.col > this.lines[line + 1].length)
-            ) {
-                if (!this.preferredCursorCol.enable) {
-                    this.preferredCursorCol = { enable: true, col };
-                }
-                this.cursor.col = this.lines[line + 1].length;
-            } else if (
-                this.preferredCursorCol.enable &&
-                this.preferredCursorCol.col <= this.lines[line - 1].length
-            ) {
-                this.cursor.col = this.preferredCursorCol.col;
-            }
+            this.setCursor(line + 1, col, true);
         } else if (ctrl) {
-            this.cursor.col = this.lines[line].length;
+            this.setCursor(line, this.lines[line].length);
         }
 
         this._selectToCursor(shift, line, col);
@@ -537,10 +508,9 @@ export class Editor {
         const { line, col } = this.cursor;
 
         if (ctrl) {
-            this.cursor.line = this.lines.length - 1;
-            this.cursor.col = this.lines[this.lines.length - 1].length;
+            this.setCursor(this.lines.length - 1, this.lines[this.lines.length - 1].length);
         } else {
-            this.cursor.col = this.lines[line].length;
+            this.setCursor(line, this.lines[line].length);
         }
 
         this._selectToCursor(shift, line, col);
@@ -549,11 +519,13 @@ export class Editor {
     _moveHome({ ctrl, shift }) {
         const { line, col } = this.cursor;
 
-        this.cursor.col = 0;
+        let newLine = line;
 
         if (ctrl) {
-            this.cursor.line = 0;
+            newLine = 0;
         }
+
+        this.setCursor(newLine, 0);
 
         this._selectToCursor(shift, line, col);
     }
@@ -571,13 +543,15 @@ export class Editor {
             minLine = Math.max(0, Math.floor(this.scrollY / this.lineHeight));
         }
 
-        this.cursor.line = Math.max(minLine, line - linesPerPage);
+        let newCol = Math.min(this.lines[this.cursor.line].length, col);
+        let cancelPreferred = false;
 
         if (line - linesPerPage < 0) {
-            this.cursor.col = 0;
-        } else {
-            this.cursor.col = Math.min(this.lines[this.cursor.line].length, col);
+            newCol = 0;
+            cancelPreferred = true;
         }
+
+        this.setCursor(Math.max(minLine, line - linesPerPage), newCol, !cancelPreferred);
 
         this._selectToCursor(shift, line, col);
     }
@@ -595,13 +569,15 @@ export class Editor {
             maxLine = Math.min(this.lines.length, startLine + Math.ceil((h + this.lineHeight) / this.lineHeight));
         }
 
-        this.cursor.line = Math.min(line + linesPerPage, maxLine);
+        let newCol = Math.min(this.lines[this.cursor.line].length, col);
+        let cancelPreferred = false;
 
         if (line + linesPerPage > this.lines.length - 1) {
-            this.cursor.col = this.lines[this.lines.length - 1].length;
-        } else {
-            this.cursor.col = Math.min(this.lines[this.cursor.line].length, col);
+            newCol = this.lines[this.lines.length - 1].length;
+            cancelPreferred = true;
         }
+
+        this.setCursor(Math.min(line + linesPerPage, maxLine), newCol, !cancelPreferred);
 
         this._selectToCursor(shift, line, col);
     }
