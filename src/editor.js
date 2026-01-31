@@ -29,10 +29,10 @@ export class Editor {
             "  - Shift commands (Shift+End, etc.)",
             "  - Ctrl commands (Ctrl+A, etc.)",
             "  - Local save",
-            "",
-            "Will be implemented:",
             "  - Undo / Redo",
             "  - Line numbers",
+            "",
+            "Will be implemented:",
             "  - Colors",
             "  - Syntax highlight",
             "  - And maybe much more!"
