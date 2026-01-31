@@ -38,6 +38,8 @@ export class Editor {
             "  - And maybe much more!"
         ];
 
+        this.lineLimit = 9999;
+
         this.cursor = { line: 0, col: 0 };
         this.scrollY = 0;
         this.scrollX = 0;
@@ -64,7 +66,7 @@ export class Editor {
     }
 
     setCursor(line, col, usePreferredCol = false) {
-        this.cursor.line = this._clamp(line, 0, this.lines.length);
+        this.cursor.line = this._clamp(line, 0, this.lines.length - 1);
 
         if (!usePreferredCol) {
             this.cursor.col = this._clamp(col, 0, this.lines[this.cursor.line].length);
@@ -365,6 +367,7 @@ export class Editor {
 
         if (lines.length == 1) {
             this.lines[line] = s.slice(0, col) + text + s.slice(col);
+            this.lines.splice(10_000);
             this.setCursor(line, col + text.length);
         } else {
             const prefix = s.slice(0, col) + lines[0];
@@ -372,6 +375,7 @@ export class Editor {
 
             this.lines.splice(line, 1, prefix, ...lines.slice(1, -1), suffix);
 
+            this.lines.splice(this.lineLimit);
             this.setCursor(line + lines.length - 1, lines[lines.length - 1].length);
         }
 
@@ -388,6 +392,7 @@ export class Editor {
         const right = s.slice(col);
         this.lines[line] = left;
         this.lines.splice(line + 1, 0, right);
+        this.lines.splice(this.lineLimit);
         this.setCursor(line + 1, 0);
 
         localStorage.setItem('editorContent', this.lines.join("\n"));
@@ -718,7 +723,7 @@ export class Editor {
                 ctx.fillRect(x + selColStart * this.charWidth, y - 1, (selColEnd - selColStart) * this.charWidth, this.lineHeight - 2);
             }
 
-            const lineNumber = String(i).padStart(4);
+            const lineNumber = String(i + 1).padStart(4);
             ctx.fillStyle = "rgba(255, 255, 255, 0.5)";
             ctx.fillText(lineNumber, 8, y);
 
