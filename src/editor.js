@@ -47,6 +47,9 @@ export class Editor {
 
         this.preferredCursorCol = null;
 
+        this.undos = [];
+        this.redos = [];
+
         this._measure();
     }
 
@@ -251,6 +254,7 @@ export class Editor {
     }
 
     _handleCommand(e) {
+        let content = "";
         switch (e.key) {
             case "a":
                 e.preventDefault();
@@ -259,8 +263,36 @@ export class Editor {
                 this.inSelection = true;
                 this.selection = { start: { line: 0, col: 0 }, end: { line: this.lines.length - 1, col: lastLine.length } };
                 break;
+            case "z":
+                e.preventDefault();
+                if (this.undos.length <= 1) return;
+                this.redos.push(this.lines.join("\n"));
+                this.undos.pop();
+                content = this.undos[this.undos.length - 1];
+                this.lines = content.split("\n");
+                this.setCursor(0, 0);
+                break;
+            case "y":
+                e.preventDefault();
+                if (this.redos.length <= 0) return;
+                content = this.redos.pop();
+                this._addUndo(false);
+                this.lines = content.split("\n");
+                this.setCursor(0, 0);
+                break;
             default:
                 break;
+        }
+    }
+
+    _addUndo(clearRedo = true) {
+        while (this.undos.length >= 50) {
+            this.undos.pop();
+        }
+        let text = this.lines.join("\n");
+        this.undos.push(text);
+        if (clearRedo) {
+            this.redos = [];
         }
     }
 
@@ -341,6 +373,7 @@ export class Editor {
         }
 
         localStorage.setItem('editorContent', this.lines.join("\n"));
+        this._addUndo();
     }
 
     _insertNewLine() {
@@ -355,12 +388,14 @@ export class Editor {
         this.setCursor(line + 1, 0);
 
         localStorage.setItem('editorContent', this.lines.join("\n"));
+        this._addUndo();
     }
 
     _backspace({ ctrl, shift }) {
         if (this.inSelection) {
             this._deleteSelection();
             localStorage.setItem('editorContent', this.lines.join("\n"));
+            this._addUndo();
             return;
         }
 
@@ -374,6 +409,7 @@ export class Editor {
                 this.setCursor(line, col - 1);
 
                 localStorage.setItem('editorContent', this.lines.join("\n"));
+                this._addUndo();
                 return;
             }
 
@@ -390,6 +426,7 @@ export class Editor {
             this.setCursor(line, newCol);
 
             localStorage.setItem('editorContent', this.lines.join("\n"));
+            this._addUndo();
             return;
         }
 
@@ -400,6 +437,7 @@ export class Editor {
         this.setCursor(line - 1, prev.length);
 
         localStorage.setItem('editorContent', this.lines.join("\n"));
+        this._addUndo();
     }
 
     _delete({ ctrl, shift }) {
@@ -419,6 +457,7 @@ export class Editor {
                 this.lines[line] = s.slice(0, col) + s.slice(col + 1);
 
                 localStorage.setItem('editorContent', this.lines.join("\n"));
+                this._addUndo();
                 return;
             }
 
@@ -428,6 +467,7 @@ export class Editor {
             this.lines[line] = s.slice(0, col) + s.slice(i);
 
             localStorage.setItem('editorContent', this.lines.join("\n"));
+            this._addUndo();
             return;
         }
 
@@ -437,6 +477,7 @@ export class Editor {
         this.lines.splice(line + 1, 1);
 
         localStorage.setItem('editorContent', this.lines.join("\n"));
+        this._addUndo();
     }
 
     // Cursor movement
