@@ -5,10 +5,13 @@ export class Editor {
 
         // Config
         this.dpr = 1;
-        this.padding = 16;
+        this.paddingHeight = 16;
         this.fontSize = 16;
         this.lineHeight = 20;
         this.fontFamily = "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace";
+
+        this._measure();
+        this.paddingWidth = 16 + 4 * this.charWidth;
 
         this.lines = [
             "Custom text-editor - A completely hand-made editor",
@@ -49,8 +52,6 @@ export class Editor {
 
         this.undos = [];
         this.redos = [];
-
-        this._measure();
     }
 
     isSpecialChar(char) {
@@ -98,15 +99,17 @@ export class Editor {
         const viewW = this.canvas.width / this.dpr;
         const viewH = this.canvas.height / this.dpr;
 
-        const caretX = this.padding + this.cursor.col * this.charWidth;
-        const caretY = this.padding + this.cursor.line * this.lineHeight;
+        const textRelativeX = this.cursor.col * this.charWidth;
+        const caretY = this.paddingHeight + this.cursor.line * this.lineHeight;
 
         const margin = 24;
 
-        if (caretX - margin < this.scrollX) this.scrollX = Math.max(0, caretX - margin);
+        const visibleTextWidth = viewH - this.paddingWidth;
+
+        if (textRelativeX - margin < this.scrollX) this.scrollX = Math.max(0, textRelativeX - margin);
         if (caretY - margin < this.scrollY) this.scrollY = Math.max(0, caretY - margin);
 
-        if (caretX + margin > this.scrollX + viewW) this.scrollX = caretX + margin - viewW;
+        if (textRelativeX + margin > this.scrollX + viewW) this.scrollX = textRelativeX + margin - visibleTextWidth;
         if (caretY + this.lineHeight + margin > this.scrollY + viewH) {
             this.scrollY = caretY + this.lineHeight + margin - viewH;
         }
@@ -654,8 +657,8 @@ export class Editor {
         const x = e.clientX - rect.left;
         const y = e.clientY - rect.top;
 
-        const contentX = x + this.scrollX - this.padding;
-        const contentY = y + this.scrollY - this.padding;
+        const contentX = x + this.scrollX - this.paddingWidth;
+        const contentY = y + this.scrollY - this.paddingHeight;
 
         const line = this._clamp(
             Math.floor(contentY / this.lineHeight),
@@ -704,24 +707,29 @@ export class Editor {
         }
 
         for (let i = startLine; i < endLine; i++) {
-            const x = this.padding - this.scrollX;
-            const y = this.padding + i * this.lineHeight - this.scrollY;
+            const x = this.paddingWidth - this.scrollX;
+            const minChar = Math.ceil((this.paddingWidth - x) / this.charWidth);
+            const y = this.paddingHeight + i * this.lineHeight - this.scrollY;
 
             if (this.inSelection && selStart.line <= i && selEnd.line >= i) {
                 const selColStart = selStart.line < i ? 0 : selStart.col;
                 const selColEnd = selEnd.line > i ? this.lines[i].length : selEnd.col;
-                ctx.fillStyle = "rgba(255, 255, 255, 0.5)"
+                ctx.fillStyle = "rgba(255, 255, 255, 0.5)";
                 ctx.fillRect(x + selColStart * this.charWidth, y - 1, (selColEnd - selColStart) * this.charWidth, this.lineHeight - 2);
             }
 
+            const lineNumber = String(i).padStart(4);
+            ctx.fillStyle = "rgba(255, 255, 255, 0.5)";
+            ctx.fillText(lineNumber, 8, y);
+
             ctx.fillStyle = "#ffffffff";
-            ctx.fillText(this.lines[i], x, y);
+            ctx.fillText(this.lines[i].substring(minChar), this.paddingWidth, y);
         }
 
         // Caret
         if (this.caretVisible) {
-            const cx = this.padding + this.cursor.col * this.charWidth - this.scrollX;
-            const cy = this.padding + this.cursor.line * this.lineHeight - 2 - this.scrollY;
+            const cx = this.paddingWidth + this.cursor.col * this.charWidth - this.scrollX;
+            const cy = this.paddingHeight + this.cursor.line * this.lineHeight - 2 - this.scrollY;
 
             if (cx >= -2 && cx <= w + 2 && cy >= -this.lineHeight && cy <= h + this.lineHeight) {
                 ctx.fillStyle = "#ffffffff";
