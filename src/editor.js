@@ -150,8 +150,18 @@ export class Editor {
 
     onWheel(e) {
         e.preventDefault();
-        this.scrollY = this._clamp(this.scrollY + e.deltaY, 0, (this.lines.length - 1) * this.lineHeight);
-        this.render();
+        const ctrl = e.ctrlKey || e.metaKey;
+        if (!ctrl) {
+            this.scrollY = this._clamp(this.scrollY + e.deltaY, 0, (this.lines.length - 1) * this.lineHeight);
+            this.render();
+        } else {
+            const delta = this._clamp(e.deltaY, -1, 1);
+            this.fontSize = this._clamp(this.fontSize + (4 * -delta), 12, 64);
+            this.lineHeight = this.fontSize + 4;
+            this._measure();
+            this.paddingWidth = 16 + 4 * this.charWidth;
+            this.render();
+        }
     }
 
     // Keyboard inputs
