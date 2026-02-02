@@ -54,6 +54,7 @@ export class Editor {
 
         this.undos = [];
         this.redos = [];
+        this.lastSnapshot = 0;
     }
 
     isSpecialChar(char) {
@@ -233,7 +234,11 @@ export class Editor {
                 break;
             case "Tab":
                 e.preventDefault();
-                this._insertText("  ");
+                if (shift) {
+                    this._untab();
+                } else {
+                    this._tab();
+                }
                 this._ensureVisibleCaret();
                 break;
 
@@ -367,6 +372,46 @@ export class Editor {
         this.setCursor(startLine, startCol);
     }
 
+    _tab() {
+        if (this.inSelection) {
+            let selStart = this.selection.start;
+            let selEnd = this.selection.end;
+            if (selStart.line > selEnd.line || (selStart.line == selEnd.line && selStart.col > selEnd.col)) {
+                [selStart, selEnd] = [selEnd, selStart];
+            }
+            for (let i = selStart.line; i <= selEnd.line; i++) {
+                this.lines[i] = "  " + this.lines[i];
+            }
+            this.setCursor(this.cursor.line, this.cursor.col + 2);
+            localStorage.setItem('editorContent', this.lines.join("\n"));
+            this._addUndo();
+        } else {
+            this._insertText(" ".repeat(this.cursor.col % 2 == 0 ? 2 : 1));
+        }
+    }
+
+    _untab() {
+        if (this.inSelection) {
+            let selStart = this.selection.start;
+            let selEnd = this.selection.end;
+            if (selStart.line > selEnd.line || (selStart.line == selEnd.line && selStart.col > selEnd.col)) {
+                [selStart, selEnd] = [selEnd, selStart];
+            }
+            for (let i = selStart.line; i <= selEnd.line; i++) {
+                if (this.lines[i].startsWith("  ")) {
+                    this.lines[i] = this.lines[i].substring(2);
+                    this.setCursor(this.cursor.line, this.cursor.col - 2);
+                }
+            }
+        } else if (this.lines[this.cursor.line].startsWith("  ")) {
+            this.lines[this.cursor.line] = this.lines[this.cursor.line].substring(2);
+            this.setCursor(this.cursor.line, this.cursor.col - 2);
+        }
+
+        localStorage.setItem('editorContent', this.lines.join("\n"));
+        this._addUndo();
+    }
+
     _insertText(text) {
         this._deleteSelection();
 
@@ -390,7 +435,10 @@ export class Editor {
         }
 
         localStorage.setItem('editorContent', this.lines.join("\n"));
-        this._addUndo();
+        if (text.length > 1 || this.isSpecialChar(text) || Date.now() - this.lastSnapshot >= 1000) {
+            this.lastSnapshot = Date.now();
+            this._addUndo();
+        }
     }
 
     _insertNewLine() {
