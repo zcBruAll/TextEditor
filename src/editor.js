@@ -106,7 +106,7 @@ export class Editor {
 
         const margin = 24;
 
-        const visibleTextWidth = viewH - this.paddingWidth;
+        const visibleTextWidth = viewW - this.paddingWidth;
 
         if (textRelativeX - margin < this.scrollX) this.scrollX = Math.max(0, textRelativeX - margin);
         if (caretY - margin < this.scrollY) this.scrollY = Math.max(0, caretY - margin);
@@ -312,7 +312,7 @@ export class Editor {
         }
 
         if (selStart.line == selEnd.line) {
-            return (this.lines[selStart.line]).slice(selStart.col, selEnd.col + 1);
+            return (this.lines[selStart.line]).slice(selStart.col, selEnd.col);
         }
 
         const text = [];
@@ -496,7 +496,7 @@ export class Editor {
             if (col > 0) {
                 this.setCursor(line, col - 1);
             } else if (line > 0) {
-                this.cursor(line - 1, (this.lines[this.cursor.line] ?? "").length);
+                this.setCursor(line - 1, (this.lines[this.cursor.line - 1] ?? "").length);
             }
 
             this._selectToCursor(shift, line, col);
@@ -640,6 +640,7 @@ export class Editor {
 
         if (ctrl) {
             // Theorically works but un-testable on browser, it captures it first
+            const startLine = Math.max(0, Math.floor(this.scrollY / this.lineHeight));
             maxLine = Math.min(this.lines.length, startLine + Math.ceil((h + this.lineHeight) / this.lineHeight));
         }
 
