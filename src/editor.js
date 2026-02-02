@@ -32,9 +32,9 @@ export class Editor {
             "  - Local save",
             "  - Undo / Redo",
             "  - Line numbers",
+            "  - Mouse selection",
             "",
             "Planned / maybe coming later:",
-            "  - Mouse selection",
             "  - Colors",
             "  - Syntax highlighting",
             "  - Probably more things as I experiment",
@@ -52,6 +52,9 @@ export class Editor {
         this.cursor = { line: 0, col: 0 };
         this.scrollY = 0;
         this.scrollX = 0;
+
+        this.lastClick = 0;
+        this.nbClick = 0;
 
         this.caretVisible = true;
         this.skipCaretChange = false;
@@ -144,6 +147,42 @@ export class Editor {
         this._selectToCursor(shift, line, col);
         this._ensureVisibleCursor();
         this.render();
+    }
+
+    onMouseClick(e) {
+        const now = Date.now();
+        if (now - this.lastClick < 1000) {
+            this.nbClick++;
+            if (this.nbClick == 2) {
+                const { line, col } = this.cursor;
+                let startOfWord = col;
+                let endOfWord = col;
+
+                let i = col;
+                const s = this.lines[line] ?? "";
+                while (!this.isSpecialChar(s[i]) && i >= 0) {
+                    i--;
+                }
+                startOfWord = i + 1;
+                i = col;
+                while (!this.isSpecialChar(s[i]) && i < s.length) {
+                    i++;
+                }
+                endOfWord = i;
+
+                this.inSelection = true;
+                this.selection = { start: { line, col: startOfWord }, end: { line, col: endOfWord } };
+                this.setCursor(line, endOfWord);
+            } else if (this.nbClick == 3) {
+                const { line, col } = this.cursor;
+                this.inSelection = true;
+                this.selection = { start: { line, col: 0 }, end: { line: line + 1, col: 0 } };
+                this.setCursor(line + 1, 0);
+            }
+        } else {
+            this.nbClick = 1;
+        }
+        this.lastClick = now;
     }
 
     onMouseMove(e) {
