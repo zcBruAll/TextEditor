@@ -14,28 +14,37 @@ export class Editor {
         this.paddingWidth = 16 + 4 * this.charWidth;
 
         this.lines = [
-            "Custom text-editor - A completely hand-made editor",
-            "It's not a \"serious\" project as it's mainly to be able to say I've made one.",
+            "Custom text-editor - built from scratch, mostly for learning and fun",
+            "This was initially not a \"serious\" project, but the more I work on it,",
+            "the more I want it to become a fully functional text editor.",
             "",
-            "What's implemented:",
-            "  - Prints printable characters",
-            "  - Arrows handling (with Ctrl)",
+            "What's implemented so far:",
+            "  - Printing of printable characters",
+            "  - Arrow keys handling (with Ctrl support)",
             "  - Enter",
-            "  - Backspace/Delete (with Ctrl)",
-            "  - Tab",
-            "  - Home + End (with Ctrl)",
-            "  - Page Up / Down (with Ctrl)",
-            "  - Selection of text",
-            "  - Shift commands (Shift+End, etc.)",
-            "  - Ctrl commands (Ctrl+A, etc.)",
+            "  - Backspace / Delete (with Ctrl)",
+            "  - Tab / Shift+Tab",
+            "  - Home & End (with Ctrl)",
+            "  - Page Up / Page Down (with Ctrl)",
+            "  - Text selection",
+            "  - Shift-based commands (Shift+End, etc.)",
+            "  - Ctrl-based commands (Ctrl+A, Ctrl+Z, etc.)",
             "  - Local save",
             "  - Undo / Redo",
             "  - Line numbers",
             "",
-            "Will be implemented:",
+            "Planned / maybe coming later:",
+            "  - Mouse selection",
             "  - Colors",
-            "  - Syntax highlight",
-            "  - And maybe much more!"
+            "  - Syntax highlighting",
+            "  - Probably more things as I experiment",
+            "",
+            "Found a bug or something weird?",
+            "Feel free to open an issue on GitHub:",
+            "https://github.com/zcBruAll/TextEditor",
+            "",
+            "Have fun experimenting."
+
         ];
 
         this.lineLimit = 9999;
@@ -446,12 +455,19 @@ export class Editor {
 
         const { line, col } = this.cursor;
         const s = this.lines[line] ?? "";
+        let nbLeadingSpace = 0;
+        for (let i = 0; i <= s.length; i++) {
+            if (s[i] == " ") {
+                nbLeadingSpace++;
+            }
+            else { break; }
+        }
         const left = s.slice(0, col);
         const right = s.slice(col);
         this.lines[line] = left;
-        this.lines.splice(line + 1, 0, right);
+        this.lines.splice(line + 1, 0, " ".repeat(nbLeadingSpace) + right);
         this.lines.splice(this.lineLimit);
-        this.setCursor(line + 1, 0);
+        this.setCursor(line + 1, nbLeadingSpace);
 
         localStorage.setItem('editorContent', this.lines.join("\n"));
         this._addUndo();
