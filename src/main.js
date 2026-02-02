@@ -47,6 +47,7 @@ window.addEventListener("cut", (e) => {
 })
 
 canvas.addEventListener("mousedown", (e) => editor.onMouseDown(e));
+canvas.addEventListener("click", (e) => editor.onMouseClick(e));
 canvas.addEventListener("mousemove", (e) => editor.onMouseMove(e));
 canvas.addEventListener("wheel", (e) => editor.onWheel(e), { passive: false });
 
