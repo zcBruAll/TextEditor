@@ -1,5 +1,8 @@
+import { Highlighter } from "./highlighter.js";
+import { Theme } from "./theme.js";
+
 export class Editor {
-    constructor(canvas) {
+    constructor(canvas, theme = "default") {
         this.canvas = canvas;
         this.ctx = canvas.getContext("2d");
 
@@ -33,10 +36,11 @@ export class Editor {
             "  - Undo / Redo",
             "  - Line numbers",
             "  - Mouse selection",
+            "  - Theming",
+            "  - C Syntax highlighting",
             "",
             "Planned / maybe coming later:",
-            "  - Colors",
-            "  - Syntax highlighting",
+            "  - Other languages syntax highlighting",
             "  - Probably more things as I experiment",
             "",
             "Found a bug or something weird?",
@@ -67,6 +71,23 @@ export class Editor {
         this.undos = [];
         this.redos = [];
         this.lastSnapshot = 0;
+
+        this.initHighlighter("C");
+
+        this.initTheme(theme ?? "default");
+    }
+
+    initHighlighter(language) {
+        this.highlighter = Highlighter.initHighlighter(language);
+    }
+
+    initTheme(theme) {
+        switch (theme){
+            case "default":
+            default:
+                this.theme = Theme.defaultTheme();
+                break;   
+        }
     }
 
     isSpecialChar(char) {
@@ -842,7 +863,14 @@ export class Editor {
             ctx.fillText(lineNumber, 8, y);
 
             ctx.fillStyle = "#ffffffff";
-            ctx.fillText(this.lines[i].substring(minChar), this.paddingWidth, y);
+            const tokens = this.highlighter.tokenize(this.lines[i]);
+            let currentX = this.paddingWidth;
+            for (const token of tokens) {
+                ctx.fillStyle = this.theme.get(token.type) || '#ffffffff';
+                ctx.fillText(token.val, currentX, y);
+                currentX += token.val.length * this.charWidth;
+            }
+            // ctx.fillText(this.lines[i].substring(minChar), this.paddingWidth, y);
         }
 
         // Caret
