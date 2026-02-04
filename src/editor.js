@@ -8,9 +8,9 @@ export class Editor {
 
         // Config
         this.dpr = 1;
-        this.paddingHeight = 16;
         this.fontSize = 16;
         this.lineHeight = 20;
+        this.paddingHeight = 16 + 2 * this.fontSize;
         this.fontFamily = "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace";
 
         this._measure();
@@ -72,9 +72,24 @@ export class Editor {
         this.redos = [];
         this.lastSnapshot = 0;
 
-        this.initHighlighter("C");
+        this.filename = "example.txt";
+        
+        this._detectLanguage();
 
         this.initTheme(theme ?? "default");
+    }
+
+    _detectLanguage() {
+        const extension = this.filename.split('.').pop().toLowerCase();
+        
+        const extensionMap = {
+            'c': 'C',
+            'h': 'C',
+            'txt': 'txt'
+        };
+
+        const lang = extensionMap[extension] || 'default';
+        this.initHighlighter(lang);
     }
 
     initHighlighter(language) {
@@ -163,6 +178,19 @@ export class Editor {
     onMouseDown(e) {
         const ctrl = e.ctrlKey || e.metaKey;
         const shift = e.shiftKey;
+        
+        const rect = this.canvas.getBoundingClientRect();
+        const y = e.clientY - rect.top;
+
+        if (y < this.paddingHeight) {
+            const newName = prompt("Enter new filename:", this.filename);
+            if (newName) {
+                this.filename = newName;
+                this._detectLanguage();
+                this.render();
+            }
+            return;
+        }
 
         this._ensureVisibleCaret();
         const pos = this._posFromMouseEvent(e);
@@ -175,7 +203,7 @@ export class Editor {
 
     onMouseClick(e) {
         const now = Date.now();
-        if (now - this.lastClick < 1000) {
+        if (now - this.lastClick < 200) {
             this.nbClick++;
             if (this.nbClick == 2) {
                 const { line, col } = this.cursor;
@@ -233,6 +261,7 @@ export class Editor {
             this.lineHeight = this.fontSize + 4;
             this._measure();
             this.paddingWidth = 16 + 4 * this.charWidth;
+            this.paddingHeight = 16 + 2 * this.fontSize;
             this.render();
         }
     }
@@ -837,6 +866,9 @@ export class Editor {
         // Text
         ctx.font = `${this.fontSize}px ${this.fontFamily}`;
         ctx.textBaseline = "top";
+
+        ctx.fillStyle = "#ffffffff";
+        ctx.fillText(this.filename, 20, 16);
 
         const startLine = Math.max(0, Math.floor(this.scrollY / this.lineHeight));
         const endLine = Math.min(this.lines.length, startLine + Math.ceil((h + this.lineHeight) / this.lineHeight));
