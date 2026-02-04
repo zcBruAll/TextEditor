@@ -52,6 +52,7 @@ export class Editor {
         ];
 
         this.lineLimit = 9999;
+        this.columnLimit = 500;
 
         this.cursor = { line: 0, col: 0 };
         this.scrollY = 0;
@@ -516,18 +517,18 @@ export class Editor {
     _insertText(text) {
         this._deleteSelection();
 
-        const lines = text.replace(/\r/g, "").split("\n");
+        const lines = text.replace(/\r/g, "").split("\n").map(line => line.substring(0, this.columnLimit));
 
         const { line, col } = this.cursor;
         const s = this.lines[line] ?? "";
 
         if (lines.length == 1) {
-            this.lines[line] = s.slice(0, col) + text + s.slice(col);
-            this.lines.splice(10_000);
+            this.lines[line] = (s.slice(0, col) + text + s.slice(col)).substring(0, this.columnLimit);
+            this.lines.splice(this.lineLimit);
             this.setCursor(line, col + text.length);
         } else {
-            const prefix = s.slice(0, col) + lines[0];
-            const suffix = lines[lines.length - 1] + s.slice(col);
+            const prefix = (s.slice(0, col) + lines[0]).substring(0, this.columnLimit);
+            const suffix = (lines[lines.length - 1] + s.slice(col)).substring(0, this.columnLimit);
 
             this.lines.splice(line, 1, prefix, ...lines.slice(1, -1), suffix);
 

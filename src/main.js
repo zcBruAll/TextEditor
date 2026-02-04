@@ -23,6 +23,10 @@ function copy(e) {
 window.onload = () => {
     const saved = localStorage.getItem('editorContent');
     if (saved) {
+        if (saved.length > editor.lineLimit * editor.columnLimit) {
+            console.error("Too much characters in cache, resetting it...");
+            localStorage.removeItem('editorContent');
+        }
         editor.clearLines();
         editor._insertText(saved);
     }
