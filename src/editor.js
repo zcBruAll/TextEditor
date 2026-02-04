@@ -139,14 +139,17 @@ export class Editor {
         const caretY = this.paddingHeight + this.cursor.line * this.lineHeight;
 
         const margin = 24;
-
         const visibleTextWidth = viewW - this.paddingWidth;
 
-        if (textRelativeX - margin < this.scrollX) this.scrollX = Math.max(0, textRelativeX - margin);
-        if (caretY - margin < this.scrollY) this.scrollY = Math.max(0, caretY - margin);
+        if (textRelativeX < this.scrollX) {
+            this.scrollX = Math.max(0, textRelativeX - margin);
+        } else if (textRelativeX > this.scrollX + visibleTextWidth - margin) {
+            this.scrollX = textRelativeX - visibleTextWidth + margin;
+        }
 
-        if (textRelativeX + margin > this.scrollX + viewW) this.scrollX = textRelativeX + margin - visibleTextWidth;
-        if (caretY + this.lineHeight + margin > this.scrollY + viewH) {
+        if (caretY - margin < this.scrollY) {
+            this.scrollY = Math.max(0, caretY - margin);
+        } else if (caretY + this.lineHeight + margin > this.scrollY + viewH) {
             this.scrollY = caretY + this.lineHeight + margin - viewH;
         }
     }
@@ -865,10 +868,16 @@ export class Editor {
             ctx.fillStyle = "#ffffffff";
             const tokens = this.highlighter.tokenize(this.lines[i]);
             let currentX = this.paddingWidth;
+            let pastNbChars = 0;
             for (const token of tokens) {
+                if (pastNbChars + token.val.length < minChar) {
+                    pastNbChars += token.val.length;
+                    continue;
+                }
                 ctx.fillStyle = this.theme.get(token.type) || '#ffffffff';
-                ctx.fillText(token.val, currentX, y);
-                currentX += token.val.length * this.charWidth;
+                ctx.fillText(token.val.substring(Math.max(0, minChar - pastNbChars)), currentX, y);
+                currentX += token.val.substring(Math.max(0, minChar - pastNbChars)).length * this.charWidth;
+                pastNbChars += token.val.length;
             }
             // ctx.fillText(this.lines[i].substring(minChar), this.paddingWidth, y);
         }
@@ -880,7 +889,7 @@ export class Editor {
 
             if (cx >= -2 && cx <= w + 2 && cy >= -this.lineHeight && cy <= h + this.lineHeight) {
                 ctx.fillStyle = "#ffffffff";
-                ctx.fillRect(cx, cy, 2, this.lineHeight);
+                ctx.fillRect(cx, cy - 2, 2, this.lineHeight);
             }
         }
     }
