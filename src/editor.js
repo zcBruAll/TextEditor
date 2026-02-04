@@ -151,22 +151,25 @@ export class Editor {
         const viewW = this.canvas.width / this.dpr;
         const viewH = this.canvas.height / this.dpr;
 
-        const textRelativeX = this.cursor.col * this.charWidth;
-        const caretY = this.paddingHeight + this.cursor.line * this.lineHeight;
+        const caretX = this.cursor.col * this.charWidth;
+        const caretY = this.cursor.line * this.lineHeight;
 
-        const margin = 24;
-        const visibleTextWidth = viewW - this.paddingWidth;
+        const hMargin = this.charWidth * 5;
+        const vMargin = this.lineHeight * 2;
 
-        if (textRelativeX < this.scrollX) {
-            this.scrollX = Math.max(0, textRelativeX - margin);
-        } else if (textRelativeX > this.scrollX + visibleTextWidth - margin) {
-            this.scrollX = textRelativeX - visibleTextWidth + margin;
+        const visibleWidth = viewW - this.paddingWidth;
+        const visibleHeight = viewH - this.paddingHeight;
+
+        if (caretX < this.scrollX + hMargin) {
+            this.scrollX = Math.max(0, caretX - hMargin);
+        } else if (caretX > this.scrollX + visibleWidth - hMargin) {
+            this.scrollX = caretX - visibleWidth + hMargin;
         }
 
-        if (caretY - margin < this.scrollY) {
-            this.scrollY = Math.max(0, caretY - margin);
-        } else if (caretY + this.lineHeight + margin > this.scrollY + viewH) {
-            this.scrollY = caretY + this.lineHeight + margin - viewH;
+        if (caretY < this.scrollY + vMargin) {
+            this.scrollY = Math.max(0, caretY - vMargin);
+        } else if (caretY > this.scrollY + visibleHeight - vMargin) {
+            this.scrollY = caretY - visibleHeight + vMargin;
         }
     }
 
@@ -885,7 +888,7 @@ export class Editor {
         for (let i = startLine; i < endLine; i++) {
             const x = this.paddingWidth - this.scrollX;
             const minChar = Math.ceil((this.paddingWidth - x) / this.charWidth);
-            const y = this.paddingHeight + i * this.lineHeight - this.scrollY;
+            const y = this.paddingHeight + (i * this.lineHeight) - this.scrollY;
 
             if (this.inSelection && selStart.line <= i && selEnd.line >= i) {
                 const selColStart = selStart.line < i ? 0 : selStart.col;
