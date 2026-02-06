@@ -1,4 +1,5 @@
 import { Editor } from './editor.js';
+import { loadDocument } from './storage.js';
 
 const canvas = document.getElementById('editor-canvas');
 const editor = new Editor(canvas);
@@ -20,15 +21,11 @@ function copy(e) {
     e.clipboardData.setData("text/plain", text);
 }
 
-window.onload = () => {
-    const saved = localStorage.getItem('editorContent');
-    if (saved) {
-        if (saved.length > editor.lineLimit * editor.columnLimit) {
-            console.error("Too much characters in cache, resetting it...");
-            localStorage.removeItem('editorContent');
-        }
+window.onload = async () => {
+    const doc = await loadDocument("default");
+    if (doc?.text) {
         editor.clearLines();
-        editor._insertText(saved);
+        editor._insertText(doc.text);
     }
 };
 

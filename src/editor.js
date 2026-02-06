@@ -1,4 +1,5 @@
 import { Highlighter } from "./highlighter.js";
+import { saveDocument } from "./storage.js";
 import { Theme } from "./theme.js";
 
 export class Editor {
@@ -14,10 +15,9 @@ export class Editor {
         this.fontFamily = "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace";
 
         this._measure();
-        this.paddingWidth = 16 + 4 * this.charWidth;
 
         this.lines = [
-            "lang: c",
+            "lang: txt",
             "Custom text-editor - built from scratch, mostly for learning and fun",
             "This was initially not a \"serious\" project, but the more I work on it,",
             "the more I want it to become a fully functional text editor.",
@@ -51,8 +51,7 @@ export class Editor {
             "Have fun experimenting."
         ];
 
-        this.lineLimit = 9999;
-        this.columnLimit = 500;
+        this._adjustPaddingWidth();
 
         this.cursor = { line: 0, col: 0 };
         this.scrollY = 0;
@@ -68,6 +67,10 @@ export class Editor {
         this.selection = { start: { line: 0, col: 0 }, end: { line: 0, col: 0 } };
 
         this.preferredCursorCol = null;
+
+        this.docId = "default";
+        this.saveTimer = null;
+        this.pendingSave = false;
 
         this.undos = [];
         this.redos = [];
@@ -133,11 +136,35 @@ export class Editor {
         this.lines = [];
     }
 
+    _scheduleSave() {
+        this.pendingSave = true;
+        if (this.saveTimer) clearTimeout(this.saveTimer);
+
+        this.saveTimer = setTimeout(async () => {
+            this.saveTimer = null;
+            if (!this.pendingSave) return;
+            this.pendingSave = false;
+
+            const text = this.lines.join("\n");
+
+            await saveDocument({
+                id: this.docId,
+                text,
+                updatedAt: Date.now()
+            });
+        }, 300);
+    }
+
     _measure() {
         const ctx = this.ctx;
         ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
         ctx.font = `${this.fontSize}px ${this.fontFamily}`;
         this.charWidth = ctx.measureText("M").width;
+    }
+
+    _adjustPaddingWidth() {
+        this.log10NbLines = Math.ceil(Math.log10(this.lines.length))
+        this.paddingWidth = 16 + this.log10NbLines * this.charWidth;
     }
 
     toggleCaret() {
@@ -250,8 +277,7 @@ export class Editor {
             this.fontSize = this._clamp(this.fontSize + (4 * -delta), 12, 64);
             this.lineHeight = this.fontSize + 4;
             this._measure();
-            this.paddingWidth = 16 + 4 * this.charWidth;
-            this.paddingHeight = 16 + 2 * this.fontSize;
+            this._adjustPaddingWidth();
             this.render();
         }
     }
@@ -476,7 +502,7 @@ export class Editor {
             this.setCursor(this.cursor.line, this.cursor.col + 2);
 
             this._detectLanguage();
-            localStorage.setItem('editorContent', this.lines.join("\n"));
+            this._scheduleSave();
             this._addUndo();
         } else {
             this._insertText(" ".repeat(this.cursor.col % 2 == 0 ? 2 : 1));
@@ -501,35 +527,35 @@ export class Editor {
             this.setCursor(this.cursor.line, this.cursor.col - 2);
         }
 
-        localStorage.setItem('editorContent', this.lines.join("\n"));
+        this._scheduleSave();
         this._addUndo();
     }
 
     _insertText(text) {
         this._deleteSelection();
 
-        const lines = text.replace(/\r/g, "").split("\n").map(line => line.substring(0, this.columnLimit));
+        const lines = text.replace(/\r/g, "").split("\n");
 
         const { line, col } = this.cursor;
         const s = this.lines[line] ?? "";
 
         if (lines.length == 1) {
-            this.lines[line] = (s.slice(0, col) + text + s.slice(col)).substring(0, this.columnLimit);
-            this.lines.splice(this.lineLimit);
+            this.lines[line] = (s.slice(0, col) + text + s.slice(col));
             this.setCursor(line, col + text.length);
         } else {
-            const prefix = (s.slice(0, col) + lines[0]).substring(0, this.columnLimit);
-            const suffix = (lines[lines.length - 1] + s.slice(col)).substring(0, this.columnLimit);
+            const prefix = (s.slice(0, col) + lines[0]);
+            const suffix = (lines[lines.length - 1] + s.slice(col));
 
             this.lines.splice(line, 1, prefix, ...lines.slice(1, -1), suffix);
 
-            this.lines.splice(this.lineLimit);
+            this._adjustPaddingWidth();
+
             this.setCursor(line + lines.length - 1, lines[lines.length - 1].length);
         }
 
         this._detectLanguage();
 
-        localStorage.setItem('editorContent', this.lines.join("\n"));
+        this._scheduleSave();
         if (text.length > 1 || this.isSpecialChar(text) || Date.now() - this.lastSnapshot >= 1000) {
             this.lastSnapshot = Date.now();
             this._addUndo();
@@ -552,12 +578,11 @@ export class Editor {
         const right = s.slice(col);
         this.lines[line] = left;
         this.lines.splice(line + 1, 0, " ".repeat(nbLeadingSpace) + right);
-        this.lines.splice(this.lineLimit);
         this.setCursor(line + 1, nbLeadingSpace);
 
         this._detectLanguage();
 
-        localStorage.setItem('editorContent', this.lines.join("\n"));
+        this._scheduleSave();
         this._addUndo();
     }
 
@@ -566,7 +591,7 @@ export class Editor {
             this._deleteSelection();
 
             this._detectLanguage();
-            localStorage.setItem('editorContent', this.lines.join("\n"));
+            this._scheduleSave();
             this._addUndo();
             return;
         }
@@ -582,7 +607,7 @@ export class Editor {
 
                 this._detectLanguage();
 
-                localStorage.setItem('editorContent', this.lines.join("\n"));
+                this._scheduleSave();
                 this._addUndo();
                 return;
             }
@@ -601,7 +626,7 @@ export class Editor {
 
             this._detectLanguage();
 
-            localStorage.setItem('editorContent', this.lines.join("\n"));
+            this._scheduleSave();
             this._addUndo();
             return;
         }
@@ -614,7 +639,7 @@ export class Editor {
 
         this._detectLanguage();
 
-        localStorage.setItem('editorContent', this.lines.join("\n"));
+        this._scheduleSave();
         this._addUndo();
     }
 
@@ -624,7 +649,7 @@ export class Editor {
 
             this._detectLanguage();
 
-            localStorage.setItem('editorContent', this.lines.join("\n"));
+            this._scheduleSave();
             this._addUndo();
             return;
         }
@@ -641,7 +666,7 @@ export class Editor {
 
                 this._detectLanguage();
 
-                localStorage.setItem('editorContent', this.lines.join("\n"));
+                this._scheduleSave();
                 this._addUndo();
                 return;
             }
@@ -653,7 +678,7 @@ export class Editor {
 
             this._detectLanguage();
 
-            localStorage.setItem('editorContent', this.lines.join("\n"));
+            this._scheduleSave();
             this._addUndo();
             return;
         }
@@ -663,7 +688,7 @@ export class Editor {
         this.lines[line] = s + next;
         this.lines.splice(line + 1, 1);
 
-        localStorage.setItem('editorContent', this.lines.join("\n"));
+        this._scheduleSave();
         this._addUndo();
     }
 
@@ -903,7 +928,7 @@ export class Editor {
                 ctx.fillRect(x + selColStart * this.charWidth, y - 1, (selColEnd - selColStart) * this.charWidth, this.lineHeight - 2);
             }
 
-            const lineNumber = String(i + 1).padStart(4);
+            const lineNumber = String(i + 1).padStart(this.log10NbLines);
             ctx.fillStyle = "rgba(255, 255, 255, 0.5)";
             ctx.fillText(lineNumber, 8, y);
 
