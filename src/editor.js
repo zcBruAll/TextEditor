@@ -3,7 +3,7 @@ import { saveDocument } from "./storage.js";
 import { Theme } from "./theme.js";
 
 export class Editor {
-    constructor(canvas, theme = "default") {
+    constructor(canvas) {
         this.canvas = canvas;
         this.ctx = canvas.getContext("2d");
 
@@ -17,7 +17,7 @@ export class Editor {
         this._measure();
 
         this.lines = [
-            "lang: txt",
+            "lang: txt, theme: midnight",
             "Custom text-editor - built from scratch, mostly for learning and fun",
             "This was initially not a \"serious\" project, but the more I work on it,",
             "the more I want it to become a fully functional text editor.",
@@ -78,7 +78,7 @@ export class Editor {
 
         this._detectLanguage();
 
-        this.initTheme(theme ?? "default");
+        this._detectTheme();
     }
 
     _detectLanguage() {
@@ -95,17 +95,26 @@ export class Editor {
         this.initHighlighter(lang.toUpperCase());
     }
 
+    _detectTheme() {
+        let theme = "default";
+        const idx = this.lines[0].indexOf("theme:");
+        if (idx > -1) {
+            theme = this.lines[0].substring(idx + 6).trim();
+            let i = 0;
+            while (i < theme.length && !this.isSpecialChar(theme[i])) {
+                i++;
+            }
+            theme = theme.substring(0, i);
+        }
+        this.initTheme(theme.toUpperCase());
+    }
+
     initHighlighter(language) {
         this.highlighter = Highlighter.initHighlighter(language);
     }
 
     initTheme(theme) {
-        switch (theme) {
-            case "default":
-            default:
-                this.theme = Theme.defaultTheme();
-                break;
-        }
+        this.theme = Theme.get(theme);
     }
 
     isSpecialChar(char) {
@@ -163,7 +172,8 @@ export class Editor {
     }
 
     _adjustPaddingWidth() {
-        this.log10NbLines = Math.ceil(Math.log10(this.lines.length))
+        this.log10NbLines = Math.ceil(Math.log10(this.lines.length + 1));
+        console.log(this.log10NbLines);
         this.paddingWidth = 16 + this.log10NbLines * this.charWidth;
     }
 
@@ -502,6 +512,7 @@ export class Editor {
             this.setCursor(this.cursor.line, this.cursor.col + 2);
 
             this._detectLanguage();
+            this._detectTheme();
             this._scheduleSave();
             this._addUndo();
         } else {
@@ -548,12 +559,12 @@ export class Editor {
 
             this.lines.splice(line, 1, prefix, ...lines.slice(1, -1), suffix);
 
-            this._adjustPaddingWidth();
-
             this.setCursor(line + lines.length - 1, lines[lines.length - 1].length);
         }
 
+        this._adjustPaddingWidth();
         this._detectLanguage();
+        this._detectTheme();
 
         this._scheduleSave();
         if (text.length > 1 || this.isSpecialChar(text) || Date.now() - this.lastSnapshot >= 1000) {
@@ -580,7 +591,9 @@ export class Editor {
         this.lines.splice(line + 1, 0, " ".repeat(nbLeadingSpace) + right);
         this.setCursor(line + 1, nbLeadingSpace);
 
+        this._adjustPaddingWidth();
         this._detectLanguage();
+        this._detectTheme();
 
         this._scheduleSave();
         this._addUndo();
@@ -590,7 +603,10 @@ export class Editor {
         if (this.inSelection) {
             this._deleteSelection();
 
+            this._adjustPaddingWidth();
             this._detectLanguage();
+            this._detectTheme();
+
             this._scheduleSave();
             this._addUndo();
             return;
@@ -605,7 +621,9 @@ export class Editor {
                 this.lines[line] = s.slice(0, col - 1) + s.slice(col);
                 this.setCursor(line, col - 1);
 
+                this._adjustPaddingWidth();
                 this._detectLanguage();
+                this._detectTheme();
 
                 this._scheduleSave();
                 this._addUndo();
@@ -624,7 +642,9 @@ export class Editor {
             this.lines[line] = s.slice(0, newCol) + s.slice(col);
             this.setCursor(line, newCol);
 
+            this._adjustPaddingWidth();
             this._detectLanguage();
+            this._detectTheme();
 
             this._scheduleSave();
             this._addUndo();
@@ -637,7 +657,9 @@ export class Editor {
         this.lines.splice(line, 1);
         this.setCursor(line - 1, prev.length);
 
+        this._adjustPaddingWidth();
         this._detectLanguage();
+        this._detectTheme();
 
         this._scheduleSave();
         this._addUndo();
@@ -647,7 +669,9 @@ export class Editor {
         if (this.inSelection) {
             this._deleteSelection();
 
+            this._adjustPaddingWidth();
             this._detectLanguage();
+            this._detectTheme();
 
             this._scheduleSave();
             this._addUndo();
@@ -664,7 +688,9 @@ export class Editor {
             if (!ctrl) {
                 this.lines[line] = s.slice(0, col) + s.slice(col + 1);
 
+                this._adjustPaddingWidth();
                 this._detectLanguage();
+                this._detectTheme();
 
                 this._scheduleSave();
                 this._addUndo();
@@ -676,7 +702,9 @@ export class Editor {
             while (i < length && this.isSpecialChar(this.lines[line][i])) i++;
             this.lines[line] = s.slice(0, col) + s.slice(i);
 
+            this._adjustPaddingWidth();
             this._detectLanguage();
+            this._detectTheme();
 
             this._scheduleSave();
             this._addUndo();
@@ -687,6 +715,10 @@ export class Editor {
         const next = this.lines[line + 1] ?? "";
         this.lines[line] = s + next;
         this.lines.splice(line + 1, 1);
+
+        this._adjustPaddingWidth();
+        this._detectLanguage();
+        this._detectTheme();
 
         this._scheduleSave();
         this._addUndo();
@@ -898,7 +930,7 @@ export class Editor {
 
         // Background
         ctx.clearRect(0, 0, w, h);
-        ctx.fillStyle = "#000000ff";
+        ctx.fillStyle = this.theme.get("background") ?? "#000000ff";
         ctx.fillRect(0, 0, w, h);
 
         // Text
@@ -924,29 +956,27 @@ export class Editor {
             if (this.inSelection && selStart.line <= i && selEnd.line >= i) {
                 const selColStart = selStart.line < i ? 0 : selStart.col;
                 const selColEnd = selEnd.line > i ? this.lines[i].length : selEnd.col;
-                ctx.fillStyle = "rgba(255, 255, 255, 0.5)";
+                ctx.fillStyle = this.theme.get("selection") ?? "rgba(255, 255, 255, 0.5)";
                 ctx.fillRect(x + selColStart * this.charWidth, y - 1, (selColEnd - selColStart) * this.charWidth, this.lineHeight - 2);
             }
 
             const lineNumber = String(i + 1).padStart(this.log10NbLines);
-            ctx.fillStyle = "rgba(255, 255, 255, 0.5)";
+            ctx.fillStyle = this.theme.get("gutter") ?? "rgba(255, 255, 255, 0.5)";
             ctx.fillText(lineNumber, 8, y);
 
-            ctx.fillStyle = "#ffffffff";
             const tokens = this.highlighter.tokenize(this.lines[i]);
-            let currentX = this.paddingWidth;
+            let currentX = this.paddingWidth + (minChar * this.charWidth) - this.scrollX;
             let pastNbChars = 0;
             for (const token of tokens) {
                 if (pastNbChars + token.val.length < minChar) {
                     pastNbChars += token.val.length;
                     continue;
                 }
-                ctx.fillStyle = this.theme.get(token.type) || '#ffffffff';
+                ctx.fillStyle = this.theme.get(token.type) ?? '#ffffffff';
                 ctx.fillText(token.val.substring(Math.max(0, minChar - pastNbChars)), currentX, y);
                 currentX += token.val.substring(Math.max(0, minChar - pastNbChars)).length * this.charWidth;
                 pastNbChars += token.val.length;
             }
-            // ctx.fillText(this.lines[i].substring(minChar), this.paddingWidth, y);
         }
 
         // Caret
@@ -955,7 +985,7 @@ export class Editor {
             const cy = this.paddingHeight + this.cursor.line * this.lineHeight - 2 - this.scrollY;
 
             if (cx >= -2 && cx <= w + 2 && cy >= -this.lineHeight && cy <= h + this.lineHeight) {
-                ctx.fillStyle = "#ffffffff";
+                ctx.fillStyle = this.theme.get("caret") ?? "#ffffffff";
                 ctx.fillRect(cx, cy - 2, 2, this.lineHeight);
             }
         }
