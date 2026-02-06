@@ -2,19 +2,20 @@ export class Highlighter {
     static initHighlighter(language) {
         switch (language) {
             case "C":
+            case "C89":
                 return new C89Highlighter();
-            case "txt":
+            case "TXT":
             default:
                 return new TextHighlighter();
         }
     }
 
     tokenize(line) {
-        return [{val: line, type: "default"}];
+        return [{ val: line, type: "default" }];
     }
 }
 
-class TextHighlighter extends Highlighter {}
+class TextHighlighter extends Highlighter { }
 
 class C89Highlighter extends Highlighter {
     constructor() {
@@ -43,12 +44,12 @@ class C89Highlighter extends Highlighter {
                 while (i < line.length && /\s/.test(line[i])) {
                     value += line[i++];
                 }
-                tokens.push({ val: value, type: 'default'});
+                tokens.push({ val: value, type: 'default' });
                 continue;
             }
 
-            if (char == '/' && line[i+1] == '/') {
-                tokens.push({val: line.substring(i), type: 'comment'});
+            if (char == '/' && line[i + 1] == '/') {
+                tokens.push({ val: line.substring(i), type: 'comment' });
                 break;
             }
 
@@ -60,7 +61,7 @@ class C89Highlighter extends Highlighter {
                 }
                 if (i < line.length && line[i] == '"') value += '"';
                 i++;
-                tokens.push({val: value, type: 'string'});
+                tokens.push({ val: value, type: 'string' });
                 continue;
             }
 
@@ -72,7 +73,7 @@ class C89Highlighter extends Highlighter {
                 }
                 if (i < line.length && line[i] == ">") value += '>';
                 i++;
-                tokens.push({val: value, type: 'string'});
+                tokens.push({ val: value, type: 'string' });
                 continue;
             }
 
@@ -105,7 +106,7 @@ class C89Highlighter extends Highlighter {
                 } else if (this.literals.has(value)) {
                     type = 'literal';
                 }
-                
+
                 tokens.push({ val: value, type: type });
                 continue;
             }

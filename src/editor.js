@@ -10,13 +10,14 @@ export class Editor {
         this.dpr = 1;
         this.fontSize = 16;
         this.lineHeight = 20;
-        this.paddingHeight = 16 + 2 * this.fontSize;
+        this.paddingHeight = 16;
         this.fontFamily = "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace";
 
         this._measure();
         this.paddingWidth = 16 + 4 * this.charWidth;
 
         this.lines = [
+            "lang: c",
             "Custom text-editor - built from scratch, mostly for learning and fun",
             "This was initially not a \"serious\" project, but the more I work on it,",
             "the more I want it to become a fully functional text editor.",
@@ -48,7 +49,6 @@ export class Editor {
             "https://github.com/zcBruAll/TextEditor",
             "",
             "Have fun experimenting."
-
         ];
 
         this.lineLimit = 9999;
@@ -73,24 +73,23 @@ export class Editor {
         this.redos = [];
         this.lastSnapshot = 0;
 
-        this.filename = "example.txt";
-        
         this._detectLanguage();
 
         this.initTheme(theme ?? "default");
     }
 
     _detectLanguage() {
-        const extension = this.filename.split('.').pop().toLowerCase();
-        
-        const extensionMap = {
-            'c': 'C',
-            'h': 'C',
-            'txt': 'txt'
-        };
-
-        const lang = extensionMap[extension] || 'default';
-        this.initHighlighter(lang);
+        let lang = "default";
+        const idx = this.lines[0].indexOf("lang:");
+        if (idx > -1) {
+            lang = this.lines[0].substring(idx + 5).trim();
+            let i = 0;
+            while (i < lang.length && !this.isSpecialChar(lang[i])) {
+                i++;
+            }
+            lang = lang.substring(0, i);
+        }
+        this.initHighlighter(lang.toUpperCase());
     }
 
     initHighlighter(language) {
@@ -98,11 +97,11 @@ export class Editor {
     }
 
     initTheme(theme) {
-        switch (theme){
+        switch (theme) {
             case "default":
             default:
                 this.theme = Theme.defaultTheme();
-                break;   
+                break;
         }
     }
 
@@ -182,19 +181,6 @@ export class Editor {
     onMouseDown(e) {
         const ctrl = e.ctrlKey || e.metaKey;
         const shift = e.shiftKey;
-        
-        const rect = this.canvas.getBoundingClientRect();
-        const y = e.clientY - rect.top;
-
-        if (y < this.paddingHeight) {
-            const newName = prompt("Enter new filename:", this.filename);
-            if (newName) {
-                this.filename = newName;
-                this._detectLanguage();
-                this.render();
-            }
-            return;
-        }
 
         this._ensureVisibleCaret();
         const pos = this._posFromMouseEvent(e);
@@ -488,6 +474,8 @@ export class Editor {
                 this.lines[i] = "  " + this.lines[i];
             }
             this.setCursor(this.cursor.line, this.cursor.col + 2);
+
+            this._detectLanguage();
             localStorage.setItem('editorContent', this.lines.join("\n"));
             this._addUndo();
         } else {
@@ -539,6 +527,8 @@ export class Editor {
             this.setCursor(line + lines.length - 1, lines[lines.length - 1].length);
         }
 
+        this._detectLanguage();
+
         localStorage.setItem('editorContent', this.lines.join("\n"));
         if (text.length > 1 || this.isSpecialChar(text) || Date.now() - this.lastSnapshot >= 1000) {
             this.lastSnapshot = Date.now();
@@ -565,6 +555,8 @@ export class Editor {
         this.lines.splice(this.lineLimit);
         this.setCursor(line + 1, nbLeadingSpace);
 
+        this._detectLanguage();
+
         localStorage.setItem('editorContent', this.lines.join("\n"));
         this._addUndo();
     }
@@ -572,6 +564,8 @@ export class Editor {
     _backspace({ ctrl, shift }) {
         if (this.inSelection) {
             this._deleteSelection();
+
+            this._detectLanguage();
             localStorage.setItem('editorContent', this.lines.join("\n"));
             this._addUndo();
             return;
@@ -585,6 +579,8 @@ export class Editor {
             if (!ctrl) {
                 this.lines[line] = s.slice(0, col - 1) + s.slice(col);
                 this.setCursor(line, col - 1);
+
+                this._detectLanguage();
 
                 localStorage.setItem('editorContent', this.lines.join("\n"));
                 this._addUndo();
@@ -603,6 +599,8 @@ export class Editor {
             this.lines[line] = s.slice(0, newCol) + s.slice(col);
             this.setCursor(line, newCol);
 
+            this._detectLanguage();
+
             localStorage.setItem('editorContent', this.lines.join("\n"));
             this._addUndo();
             return;
@@ -614,6 +612,8 @@ export class Editor {
         this.lines.splice(line, 1);
         this.setCursor(line - 1, prev.length);
 
+        this._detectLanguage();
+
         localStorage.setItem('editorContent', this.lines.join("\n"));
         this._addUndo();
     }
@@ -621,6 +621,11 @@ export class Editor {
     _delete({ ctrl, shift }) {
         if (this.inSelection) {
             this._deleteSelection();
+
+            this._detectLanguage();
+
+            localStorage.setItem('editorContent', this.lines.join("\n"));
+            this._addUndo();
             return;
         }
 
@@ -634,6 +639,8 @@ export class Editor {
             if (!ctrl) {
                 this.lines[line] = s.slice(0, col) + s.slice(col + 1);
 
+                this._detectLanguage();
+
                 localStorage.setItem('editorContent', this.lines.join("\n"));
                 this._addUndo();
                 return;
@@ -643,6 +650,8 @@ export class Editor {
             while (i < length && !this.isSpecialChar(this.lines[line][i])) i++;
             while (i < length && this.isSpecialChar(this.lines[line][i])) i++;
             this.lines[line] = s.slice(0, col) + s.slice(i);
+
+            this._detectLanguage();
 
             localStorage.setItem('editorContent', this.lines.join("\n"));
             this._addUndo();
@@ -870,9 +879,6 @@ export class Editor {
         // Text
         ctx.font = `${this.fontSize}px ${this.fontFamily}`;
         ctx.textBaseline = "top";
-
-        ctx.fillStyle = "#ffffffff";
-        ctx.fillText(this.filename, 20, 16);
 
         const startLine = Math.max(0, Math.floor(this.scrollY / this.lineHeight));
         const endLine = Math.min(this.lines.length, startLine + Math.ceil((h + this.lineHeight) / this.lineHeight));
