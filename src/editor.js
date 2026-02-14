@@ -1,4 +1,4 @@
-import { Highlighter } from "./highlighter.js";
+import { initHighlighter } from "./highlighters/index.js";
 import { saveDocument } from "./storage.js";
 import { Theme } from "./theme.js";
 
@@ -139,7 +139,7 @@ export class Editor {
     }
 
     initHighlighter(language) {
-        this.highlighter = Highlighter.initHighlighter(language);
+        this.highlighter = initHighlighter(language);
     }
 
     initTheme(theme) {
