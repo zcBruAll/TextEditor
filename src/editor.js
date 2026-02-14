@@ -16,69 +16,8 @@ export class Editor {
 
         this._measure();
 
-        this.lines = [
-            "lang: txt, theme: midnight",
-            "",
-            "Welcome.",
-            "This is a custom text editor, built from scratch.",
-            "No framework, no magic, just a canvas, code and curiosity.",
-            "",
-            "Let's take a quick tour.",
-            "--- BASIC TYPING ---",
-            " • Just start typing. Printable characters work as expected.",
-            " • Enter creates a new line.",
-            " • Tab inserts indentation.",
-            " • Shift + Tab removes indentation.",
-            "",
-            "--- MOVING AROUND ---",
-            " • Arrow keys move the caret.",
-            " • Ctrl + Arrow jumps by word.",
-            " • Home / End jump to line start / end.",
-            " • Ctrl + Home / End jump to the start / end of the document.",
-            " • Page Up / Page Down scroll vertically.",
-            " • Mouse wheel also scroll vertically.",
-            "",
-            "--- SELECTION ---",
-            " • Hold Shift while moving to select text.",
-            " • Mouse click + drag also works.",
-            " • Mouse double click selects a word.",
-            " • Mouse triple click selects the whole line.",
-            " • Ctrl + A selects everything.",
-            "",
-            "--- EDITING ---",
-            " • Backspace / Delete remove characters.",
-            " • Ctrl + Backspace / delete delete by words.",
-            " • Ctrl + Z / Ctrl + Y undo and redo changes.",
-            "",
-            "--- CLIPBOARD ---",
-            " • Ctrl + C copies the current selection.",
-            " • Ctrl + X cuts it.",
-            " • Ctrl + V pastes plain text.",
-            "",
-            "--- METADATA LINE ---",
-            " • First line is interpreted as the metadata line.",
-            " • Lang metadata changes the syntax highlighter language",
-            "   Available : (txt, C)",
-            " • theme metadata changes the theme",
-            "   Available : (midnight, nord, solarized_dark)",
-            "",
-            "--- EXTRAS ---",
-            " • Ctrl + mouse wheel zooms in / out.",
-            " • Line numbers are enabled.",
-            " • Text selection is highlighted.",
-            " • The document is saved locally (deleting everyting + refresh resets to this text).",
-            " • Syntax highlighting is enabled (try C code).",
-            "",
-            "This editor started as a learning project,",
-            "and slowly turned into something more serious.",
-            "Still experimental, still evolving.",
-            "",
-            "Found a bug or something weird?",
-            "Feel free to open an issue on GitHub:",
-            "https://github.com/zcBruAll/TextEditor",
-            "",
-            "Have fun experimenting."
-        ];
+        this.blocLength = 256;
+        this.initText();
 
         this._adjustPaddingWidth();
 
@@ -112,23 +51,25 @@ export class Editor {
 
     _detectLanguage() {
         let lang = "default";
-        const idx = this.lines[0].indexOf("lang:");
+        const firstLineContent = this.lines[0].lines[0].content;
+        const idx = firstLineContent.indexOf("lang:");
         if (idx > -1) {
-            lang = this.lines[0].substring(idx + 5).trim();
+            lang = firstLineContent.substring(idx + 5).trim();
             let i = 0;
             while (i < lang.length && !this.isSpecialChar(lang[i])) {
                 i++;
             }
             lang = lang.substring(0, i);
         }
-        this.initHighlighter(lang.toUpperCase());
+        this.initHighlighter(lang.toUpperCase(), this);
     }
 
     _detectTheme() {
         let theme = "default";
-        const idx = this.lines[0].indexOf("theme:");
+        const firstLineContent = this.lines[0].lines[0].content;
+        const idx = firstLineContent.indexOf("theme:");
         if (idx > -1) {
-            theme = this.lines[0].substring(idx + 6).trim();
+            theme = firstLineContent.substring(idx + 6).trim();
             let i = 0;
             while (i < theme.length && !this.isSpecialChar(theme[i])) {
                 i++;
@@ -139,7 +80,7 @@ export class Editor {
     }
 
     initHighlighter(language) {
-        this.highlighter = initHighlighter(language);
+        this.highlighter = initHighlighter(language, this);
     }
 
     initTheme(theme) {
@@ -156,22 +97,93 @@ export class Editor {
     }
 
     setCursor(line, col, usePreferredCol = false) {
-        this.cursor.line = this._clamp(line, 0, this.lines.length - 1);
+        this.cursor.line = this._clamp(line, 0, this._getNbLines() - 1);
 
         if (!usePreferredCol) {
-            this.cursor.col = this._clamp(col, 0, this.lines[this.cursor.line].length);
+            this.cursor.col = this._clamp(col, 0, this._lineAt(this.cursor.line).content.length);
             this.preferredCursorCol = null;
             return;
         }
 
-        if (!this.preferredCursorCol) {
+        if (this.preferredCursorCol == null) {
             this.preferredCursorCol = this.cursor.col;
         }
-        this.cursor.col = Math.min(this.preferredCursorCol, this.lines[this.cursor.line].length);
+        this.cursor.col = Math.min(this.preferredCursorCol, this._lineAt(this.cursor.line).content.length);
+    }
+
+    initText() {
+        this.lines = [
+            {
+                lines: [
+                    { content: "lang: c, theme: midnight", lastState: "normal" },
+                    { content: "", lastState: "normal" },
+                    { content: "Welcome.", lastState: "normal" },
+                    { content: "This is a custom text editor, built from scratch.", lastState: "normal" },
+                    { content: "No framework, no magic, just a canvas, code and curiosity.", lastState: "normal" },
+                    { content: "", lastState: "normal" },
+                    { content: "Let's take a quick tour.", lastState: "normal" },
+                    { content: "--- BASIC TYPING ---", lastState: "normal" },
+                    { content: " • Just start typing. Printable characters work as expected.", lastState: "normal" },
+                    { content: " • Enter creates a new line.", lastState: "normal" },
+                    { content: " • Tab inserts indentation.", lastState: "normal" },
+                    { content: " • Shift + Tab removes indentation.", lastState: "normal" },
+                    { content: "", lastState: "normal" },
+                    { content: "--- MOVING AROUND ---", lastState: "normal" },
+                    { content: " • Arrow keys move the caret.", lastState: "normal" },
+                    { content: " • Ctrl + Arrow jumps by word.", lastState: "normal" },
+                    { content: " • Home /* End jump to line start / end.", lastState: "normal" },
+                    { content: " • Ctrl + Home / End jump to the start / end of the document.", lastState: "normal" },
+                    { content: " • Page Up / Page Down scroll vertically.", lastState: "normal" },
+                    { content: " • Mouse wheel also scroll vertically.", lastState: "normal" },
+                    { content: "", lastState: "normal" },
+                    { content: "--- SELECTION ---", lastState: "normal" },
+                    { content: " • Hold Shift while moving to select text.", lastState: "normal" },
+                    { content: " • Mouse click + drag also works.", lastState: "normal" },
+                    { content: " • Mouse double click selects a word.", lastState: "normal" },
+                    { content: " • Mouse triple click selects the whole line.", lastState: "normal" },
+                    { content: " • Ctrl + A selects everything.", lastState: "normal" },
+                    { content: "", lastState: "normal" },
+                    { content: "--- EDITING ---", lastState: "normal" },
+                    { content: " • Backspace / Delete remove characters.", lastState: "normal" },
+                    { content: " • Ctrl + Backspace / delete delete by words.", lastState: "normal" },
+                    { content: " • Ctrl + Z */ Ctrl + Y undo and redo changes.", lastState: "normal" },
+                    { content: "", lastState: "normal" },
+                    { content: "--- CLIPBOARD ---", lastState: "normal" },
+                    { content: " • Ctrl + C copies the current selection.", lastState: "normal" },
+                    { content: " • Ctrl + X cuts it.", lastState: "normal" },
+                    { content: " • Ctrl + V pastes plain text.", lastState: "normal" },
+                    { content: "", lastState: "normal" },
+                    { content: "--- METADATA LINE ---", lastState: "normal" },
+                    { content: " • First line is interpreted as the metadata line.", lastState: "normal" },
+                    { content: " • Lang metadata changes the syntax highlighter language", lastState: "normal" },
+                    { content: "   Available : (txt, C)", lastState: "normal" },
+                    { content: " • theme metadata changes the theme", lastState: "normal" },
+                    { content: "   Available : (midnight, nord, solarized_dark)", lastState: "normal" },
+                    { content: "", lastState: "normal" },
+                    { content: "--- EXTRAS ---", lastState: "normal" },
+                    { content: " • Ctrl + mouse wheel zooms in / out.", lastState: "normal" },
+                    { content: " • Line numbers are enabled.", lastState: "normal" },
+                    { content: " • Text selection is highlighted.", lastState: "normal" },
+                    { content: " • The document is saved locally (deleting everyting + refresh resets to this text).", lastState: "normal" },
+                    { content: " • Syntax highlighting is enabled (try C code).", lastState: "normal" },
+                    { content: "", lastState: "normal" },
+                    { content: "This editor started as a learning project,", lastState: "normal" },
+                    { content: "and slowly turned into something more serious.", lastState: "normal" },
+                    { content: "Still experimental, still evolving.", lastState: "normal" },
+                    { content: "", lastState: "normal" },
+                    { content: "Found a bug or something weird?", lastState: "normal" },
+                    { content: "Feel free to open an issue on GitHub:", lastState: "normal" },
+                    { content: "https://github.com/zcBruAll/TextEditor", lastState: "normal" },
+                    { content: "", lastState: "normal" },
+                    { content: "Have fun experimenting.", lastState: "normal" }
+                ],
+                lastState: "normal"
+            }
+        ];
     }
 
     clearLines() {
-        this.lines = [];
+        this.lines = [{ lines: [{ content: "", lastState: "normal" }], lastState: "normal" }];
     }
 
     _scheduleSave() {
@@ -183,7 +195,7 @@ export class Editor {
             if (!this.pendingSave) return;
             this.pendingSave = false;
 
-            const text = this.lines.join("\n");
+            const text = this._getText();
 
             await saveDocument({
                 id: this.docId,
@@ -200,8 +212,22 @@ export class Editor {
         this.charWidth = ctx.measureText("M").width;
     }
 
+    _getNbLines() {
+        const idxLastLine = this.lines.length - 1;
+        return idxLastLine * this.blocLength + this.lines[idxLastLine].lines.length;
+    }
+
+    lineToBlocLine(line) {
+        return { bloc: Math.floor(line / this.blocLength), line: line % this.blocLength };
+    }
+
+    _lineAt(nbLine) {
+        const { bloc, line } = this.lineToBlocLine(nbLine);
+        return this.lines[bloc].lines[line];
+    }
+
     _adjustPaddingWidth() {
-        this.log10NbLines = Math.ceil(Math.log10(this.lines.length + 1));
+        this.log10NbLines = Math.ceil(Math.log10(this._getNbLines() + 1));
         this.paddingWidth = 16 + this.log10NbLines * this.charWidth;
     }
 
@@ -266,7 +292,7 @@ export class Editor {
                 let endOfWord = col;
 
                 let i = col;
-                const s = this.lines[line] ?? "";
+                const s = this._lineAt(line).content ?? "";
                 while (!this.isSpecialChar(s[i]) && i >= 0) {
                     i--;
                 }
@@ -308,7 +334,7 @@ export class Editor {
         e.preventDefault();
         const ctrl = e.ctrlKey || e.metaKey;
         if (!ctrl) {
-            this.scrollY = this._clamp(this.scrollY + e.deltaY, 0, (this.lines.length - 1) * this.lineHeight);
+            this.scrollY = this._clamp(this.scrollY + e.deltaY, 0, (this._getNbLines() - 1) * this.lineHeight);
             this.render();
         } else {
             const delta = this._clamp(e.deltaY, -1, 1);
@@ -418,10 +444,10 @@ export class Editor {
     _selectToCursor(shift, line, col) {
         if (shift) {
             if (this.inSelection) {
-                this.selection.end = this.cursor;
+                this.selection.end = { line: this.cursor.line, col: this.cursor.col };
             } else {
                 this.inSelection = true;
-                this.selection = { start: { line, col }, end: this.cursor };
+                this.selection = { start: { line, col }, end: { line: this.cursor.line, col: this.cursor.col } };
             }
         } else {
             this.inSelection = false;
@@ -430,30 +456,42 @@ export class Editor {
 
     _handleCommand(e) {
         let content = "";
+        let allLines = [];
         switch (e.key) {
             case "a":
                 e.preventDefault();
-                const lastLine = this.lines[this.lines.length - 1] ?? "";
-                this.setCursor(this.lines.length - 1, lastLine.length);
+                const lastLine = this._lineAt(this._getNbLines() - 1).content ?? "";
+                this.setCursor(this._getNbLines() - 1, lastLine.length);
                 this.inSelection = true;
-                this.selection = { start: { line: 0, col: 0 }, end: { line: this.lines.length - 1, col: lastLine.length } };
+                this.selection = { start: { line: 0, col: 0 }, end: { line: this._getNbLines() - 1, col: lastLine.length } };
                 break;
             case "z":
                 e.preventDefault();
                 if (this.undos.length <= 1) return;
-                this.redos.push(this.lines.join("\n"));
+                this.redos.push(this._getText());
                 this.undos.pop();
                 content = this.undos[this.undos.length - 1];
-                this.lines = content.split("\n");
+                allLines = content.split("\n").map(s => this._createLine(s));
+                this.lines = [this._createBloc(allLines)];
+                this._reshapeBlocs();
+
                 this.setCursor(0, 0);
+                this._detectLanguage();
+                this._detectTheme();
+                this._scheduleSave();
                 break;
             case "y":
                 e.preventDefault();
                 if (this.redos.length <= 0) return;
                 content = this.redos.pop();
                 this._addUndo(false);
-                this.lines = content.split("\n");
+                allLines = content.split("\n").map(s => this._createLine(s));
+                this.lines = [this._createBloc(allLines)];
+                this._reshapeBlocs();
                 this.setCursor(0, 0);
+                this._detectLanguage();
+                this._detectTheme();
+                this._scheduleSave();
                 break;
             default:
                 break;
@@ -461,10 +499,10 @@ export class Editor {
     }
 
     _addUndo(clearRedo = true) {
-        while (this.undos.length >= 50) {
-            this.undos.pop();
-        }
-        let text = this.lines.join("\n");
+        while (this.undos.length >= 50) this.undos.shift();
+
+        const text = this._getText();
+
         this.undos.push(text);
         if (clearRedo) {
             this.redos = [];
@@ -482,19 +520,89 @@ export class Editor {
         }
 
         if (selStart.line == selEnd.line) {
-            return (this.lines[selStart.line]).slice(selStart.col, selEnd.col);
+            return (this._lineAt(selStart.line).content).slice(selStart.col, selEnd.col);
         }
 
         const text = [];
-        text.push((this.lines[selStart.line] ?? "").slice(selStart.col));
+        text.push((this._lineAt(selStart.line).content ?? "").slice(selStart.col));
         for (let i = selStart.line + 1; i < selEnd.line; i++) {
-            text.push(this.lines[i] ?? "");
+            text.push(this._lineAt(i).content ?? "");
         }
-        text.push((this.lines[selEnd.line] ?? "").slice(0, selEnd.col));
+        text.push((this._lineAt(selEnd.line).content ?? "").slice(0, selEnd.col));
         return text.join("\n");
     }
 
+    _getText() {
+        let text = "";
+
+        for (const bloc of this.lines) {
+            for (const line of bloc.lines) {
+                text += line.content + "\n";
+            }
+        }
+
+        text = text.substring(0, text.length - 1);
+        return text;
+    }
+
     // Text management
+    _reshapeBlocs() {
+        // Remove empty blocs
+        this.lines = this.lines.filter(b => b && Array.isArray(b.lines) && b.lines.length > 0);
+
+        // Ensure at least one bloc exists
+        if (this.lines.length === 0) {
+            this.lines = [this._createBloc([this._createLine("")])];
+            return;
+        }
+
+        let idx = 0;
+        while (idx < this.lines.length) {
+            const bloc = this.lines[idx].lines;
+
+            while (bloc.length > this.blocLength) {
+                const transfer = bloc.splice(this.blocLength);
+
+                if (idx + 1 < this.lines.length) {
+                    this.lines[idx + 1].lines.unshift(...transfer);
+                } else {
+                    this.lines.push(this._createBloc(transfer));
+                }
+            }
+
+            while (bloc.length < this.blocLength && idx < this.lines.length - 1) {
+                const next = this.lines[idx + 1].lines;
+                const need = this.blocLength - bloc.length;
+
+                bloc.push(...next.splice(0, need));
+
+                if (next.length === 0) {
+                    this.lines.splice(idx + 1, 1);
+                }
+            }
+
+            idx++;
+        }
+
+        // Remove trailing empty blocs
+        this.lines = this.lines.filter(b => b && b.lines && b.lines.length > 0);
+    }
+
+
+    _createLine(content, lastState = "normal") {
+        return {
+            content,
+            lastState
+        };
+    }
+
+    _createBloc(lines, lastState = "normal") {
+        return {
+            lines,
+            lastState
+        };
+    }
+
     _deleteSelection() {
         if (!this.inSelection) return;
         this.inSelection = false;
@@ -513,16 +621,35 @@ export class Editor {
         const startCol = selStart.col;
         const endCol = selEnd.col;
 
-        const first = this.lines[startLine] ?? "";
-        const last = this.lines[endLine] ?? "";
+        const first = this._lineAt(startLine).content ?? "";
+        const last = this._lineAt(endLine).content ?? "";
 
         const prefix = first.slice(0, startCol);
         const suffix = last.slice(endCol);
 
         const mergedLine = prefix + suffix;
+        const mergedContent = this._createLine(mergedLine, this._lineAt(endLine).lastState);
 
         const deleteCount = endLine - startLine + 1;
-        this.lines.splice(startLine, deleteCount, mergedLine);
+
+        // Check if lines are in same bloc
+        const startBloc = this.lineToBlocLine(startLine);
+        const endBloc = this.lineToBlocLine(endLine);
+        if (startBloc.bloc == endBloc.bloc) {
+            this.lines[startBloc.bloc].lines.splice(startBloc.line, deleteCount, mergedContent);
+        } else {
+            const nbBlocks = endBloc.bloc - startBloc.bloc;
+            // If selection is over than 1 bloc, then blocs in between are entirely deleted
+            if (nbBlocks > 1) {
+                this.lines.splice(startBloc.bloc + 1, nbBlocks - 1);
+            }
+
+            const del = this.lines[startBloc.bloc].lines.length - startBloc.line;
+            this.lines[startBloc.bloc].lines.splice(startBloc.line, del, mergedContent);
+            this.lines[startBloc.bloc + 1].lines.splice(0, endBloc.line + 1);
+        }
+
+        this._reshapeBlocs();
 
         this.setCursor(startLine, startCol);
     }
@@ -535,7 +662,7 @@ export class Editor {
                 [selStart, selEnd] = [selEnd, selStart];
             }
             for (let i = selStart.line; i <= selEnd.line; i++) {
-                this.lines[i] = "  " + this.lines[i];
+                this._lineAt(i).content = "  " + this._lineAt(i).content;
             }
             this.setCursor(this.cursor.line, this.cursor.col + 2);
 
@@ -549,6 +676,7 @@ export class Editor {
     }
 
     _untab() {
+        const conv = this.lineToBlocLine(this.cursor.line);
         if (this.inSelection) {
             let selStart = this.selection.start;
             let selEnd = this.selection.end;
@@ -556,13 +684,13 @@ export class Editor {
                 [selStart, selEnd] = [selEnd, selStart];
             }
             for (let i = selStart.line; i <= selEnd.line; i++) {
-                if (this.lines[i].startsWith("  ")) {
-                    this.lines[i] = this.lines[i].substring(2);
+                if (this._lineAt(i).content.startsWith("  ")) {
+                    this._lineAt(i).content = this._lineAt(i).content.substring(2);
                     this.setCursor(this.cursor.line, this.cursor.col - 2);
                 }
             }
-        } else if (this.lines[this.cursor.line].startsWith("  ")) {
-            this.lines[this.cursor.line] = this.lines[this.cursor.line].substring(2);
+        } else if (this.lines[conv.bloc].lines[conv.line].content.startsWith("  ")) {
+            this.lines[conv.bloc].lines[conv.line].content = this.lines[conv.bloc].lines[conv.line].content.substring(2);
             this.setCursor(this.cursor.line, this.cursor.col - 2);
         }
 
@@ -576,16 +704,20 @@ export class Editor {
         const lines = text.replace(/\r/g, "").split("\n");
 
         const { line, col } = this.cursor;
-        const s = this.lines[line] ?? "";
+        const s = this._lineAt(line)?.content ?? "";
 
         if (lines.length == 1) {
-            this.lines[line] = (s.slice(0, col) + text + s.slice(col));
+            this._lineAt(line).content = (s.slice(0, col) + text + s.slice(col));
             this.setCursor(line, col + text.length);
         } else {
             const prefix = (s.slice(0, col) + lines[0]);
             const suffix = (lines[lines.length - 1] + s.slice(col));
 
-            this.lines.splice(line, 1, prefix, ...lines.slice(1, -1), suffix);
+            const conv = this.lineToBlocLine(line);
+            const newLines = [prefix, ...lines.slice(1, -1), suffix].map(content => this._createLine(content));
+            this.lines[conv.bloc].lines.splice(conv.line, 1, ...newLines);
+
+            this._reshapeBlocs();
 
             this.setCursor(line + lines.length - 1, lines[lines.length - 1].length);
         }
@@ -605,7 +737,7 @@ export class Editor {
         this._deleteSelection();
 
         const { line, col } = this.cursor;
-        const s = this.lines[line] ?? "";
+        const s = this._lineAt(line).content ?? "";
         let nbLeadingSpace = 0;
         for (let i = 0; i <= s.length; i++) {
             if (s[i] == " ") {
@@ -613,10 +745,14 @@ export class Editor {
             }
             else { break; }
         }
+
         const left = s.slice(0, col);
         const right = s.slice(col);
-        this.lines[line] = left;
-        this.lines.splice(line + 1, 0, " ".repeat(nbLeadingSpace) + right);
+        this._lineAt(line).content = left;
+        const conv = this.lineToBlocLine(line);
+        this.lines[conv.bloc].lines.splice(conv.line + 1, 0, this._createLine(" ".repeat(nbLeadingSpace) + right));
+
+        this._reshapeBlocs();
         this.setCursor(line + 1, nbLeadingSpace);
 
         this._adjustPaddingWidth();
@@ -643,10 +779,10 @@ export class Editor {
         const { line, col } = this.cursor;
         if (line === 0 && col === 0) return;
 
-        const s = this.lines[line] ?? "";
+        const s = this._lineAt(line).content ?? "";
         if (col > 0) {
             if (!ctrl) {
-                this.lines[line] = s.slice(0, col - 1) + s.slice(col);
+                this._lineAt(line).content = s.slice(0, col - 1) + s.slice(col);
                 this.setCursor(line, col - 1);
 
                 this._adjustPaddingWidth();
@@ -659,15 +795,15 @@ export class Editor {
             }
 
             let i = col - 1;
-            while (i >= 0 && this.isSpecialChar(this.lines[line][i])) {
+            while (i >= 0 && this.isSpecialChar(this._lineAt(line).content[i])) {
                 i--;
             }
-            while (i >= 0 && !this.isSpecialChar(this.lines[line][i])) {
+            while (i >= 0 && !this.isSpecialChar(this._lineAt(line).content[i])) {
                 i--;
             }
 
             const newCol = i + 1;
-            this.lines[line] = s.slice(0, newCol) + s.slice(col);
+            this._lineAt(line).content = s.slice(0, newCol) + s.slice(col);
             this.setCursor(line, newCol);
 
             this._adjustPaddingWidth();
@@ -680,9 +816,11 @@ export class Editor {
         }
 
         // Merge with previous line when col === 0
-        const prev = this.lines[line - 1] ?? "";
-        this.lines[line - 1] = prev + s;
-        this.lines.splice(line, 1);
+        const prev = this._lineAt(line - 1).content ?? "";
+        this._lineAt(line - 1).content = prev + s;
+        const conv = this.lineToBlocLine(line);
+        this.lines[conv.bloc].lines.splice(conv.line, 1);
+        this._reshapeBlocs();
         this.setCursor(line - 1, prev.length);
 
         this._adjustPaddingWidth();
@@ -707,14 +845,14 @@ export class Editor {
         }
 
         const { line, col } = this.cursor;
-        if (line === this.lines.length - 1 && col === this.lines[line].length)
+        if (line === this._getNbLines() - 1 && col === this._lineAt(line).content.length)
             return;
 
-        const s = this.lines[line];
-        const length = this.lines[line].length
+        const s = this._lineAt(line).content;
+        const length = this._lineAt(line).content.length
         if (col < length) {
             if (!ctrl) {
-                this.lines[line] = s.slice(0, col) + s.slice(col + 1);
+                this._lineAt(line).content = s.slice(0, col) + s.slice(col + 1);
 
                 this._adjustPaddingWidth();
                 this._detectLanguage();
@@ -726,9 +864,9 @@ export class Editor {
             }
 
             let i = col;
-            while (i < length && !this.isSpecialChar(this.lines[line][i])) i++;
-            while (i < length && this.isSpecialChar(this.lines[line][i])) i++;
-            this.lines[line] = s.slice(0, col) + s.slice(i);
+            while (i < length && !this.isSpecialChar(this._lineAt(line).content[i])) i++;
+            while (i < length && this.isSpecialChar(this._lineAt(line).content[i])) i++;
+            this._lineAt(line).content = s.slice(0, col) + s.slice(i);
 
             this._adjustPaddingWidth();
             this._detectLanguage();
@@ -740,9 +878,11 @@ export class Editor {
         }
 
         // Merge next line when col === line.length
-        const next = this.lines[line + 1] ?? "";
-        this.lines[line] = s + next;
-        this.lines.splice(line + 1, 1);
+        const next = this._lineAt(line + 1).content ?? "";
+        this._lineAt(line).content = s + next;
+        const conv = this.lineToBlocLine(line + 1);
+        this.lines[conv.bloc].lines.splice(conv.line, 1);
+        this._reshapeBlocs();
 
         this._adjustPaddingWidth();
         this._detectLanguage();
@@ -760,7 +900,7 @@ export class Editor {
             if (col > 0) {
                 this.setCursor(line, col - 1);
             } else if (line > 0) {
-                this.setCursor(line - 1, (this.lines[this.cursor.line - 1] ?? "").length);
+                this.setCursor(line - 1, (this._lineAt(this.cursor.line - 1).content ?? "").length);
             }
 
             this._selectToCursor(shift, line, col);
@@ -770,7 +910,7 @@ export class Editor {
 
         if (col == 0) {
             if (line > 0) {
-                this.setCursor(line - 1, (this.lines[this.cursor.line] ?? "").length);
+                this.setCursor(line - 1, (this._lineAt(this.cursor.line).content ?? "").length);
             }
 
             this._selectToCursor(shift, line, col);
@@ -778,8 +918,8 @@ export class Editor {
         }
 
         let i = col - 1;
-        while (i >= 0 && this.isSpecialChar(this.lines[line][i])) i--;
-        while (i >= 0 && !this.isSpecialChar(this.lines[line][i])) i--;
+        while (i >= 0 && this.isSpecialChar(this._lineAt(line).content[i])) i--;
+        while (i >= 0 && !this.isSpecialChar(this._lineAt(line).content[i])) i--;
         this.setCursor(line, i + 1);
 
         this._selectToCursor(shift, line, col);
@@ -787,12 +927,12 @@ export class Editor {
 
     _moveRight({ ctrl, shift }) {
         const { line, col } = this.cursor;
-        const length = (this.lines[line] ?? "").length;
+        const length = (this._lineAt(line).content ?? "").length;
 
         if (!ctrl) {
             if (col < length) {
                 this.setCursor(line, col + 1);
-            } else if (line < this.lines.length - 1) {
+            } else if (line < this._getNbLines() - 1) {
                 this.setCursor(line + 1, 0);
             }
 
@@ -802,7 +942,7 @@ export class Editor {
         }
 
         if (col == length) {
-            if (line < this.lines.length) {
+            if (line < this._getNbLines() - 1) {
                 this.setCursor(line + 1, 0);
             }
 
@@ -811,8 +951,8 @@ export class Editor {
         }
 
         let i = col + 1;
-        while (i < length && !this.isSpecialChar(this.lines[line][i])) i++;
-        while (i < length && this.isSpecialChar(this.lines[line][i])) i++;
+        while (i < length && !this.isSpecialChar(this._lineAt(line).content[i])) i++;
+        while (i < length && this.isSpecialChar(this._lineAt(line).content[i])) i++;
         this.setCursor(line, Math.min(length, i));
 
         this._selectToCursor(shift, line, col);
@@ -833,10 +973,10 @@ export class Editor {
     _moveDown({ ctrl, shift }) {
         const { line, col } = this.cursor;
 
-        if (!ctrl && line < this.lines.length - 1) {
+        if (!ctrl && line < this._getNbLines() - 1) {
             this.setCursor(line + 1, col, true);
         } else if (ctrl) {
-            this.setCursor(line, this.lines[line].length);
+            this.setCursor(line, this._lineAt(line).content.length);
         }
 
         this._selectToCursor(shift, line, col);
@@ -846,9 +986,9 @@ export class Editor {
         const { line, col } = this.cursor;
 
         if (ctrl) {
-            this.setCursor(this.lines.length - 1, this.lines[this.lines.length - 1].length);
+            this.setCursor(this._getNbLines() - 1, this._lineAt(this._getNbLines() - 1).content.length);
         } else {
-            this.setCursor(line, this.lines[line].length);
+            this.setCursor(line, this._lineAt(line).content.length);
         }
 
         this._selectToCursor(shift, line, col);
@@ -881,7 +1021,7 @@ export class Editor {
             minLine = Math.max(0, Math.floor(this.scrollY / this.lineHeight));
         }
 
-        let newCol = Math.min(this.lines[this.cursor.line].length, col);
+        let newCol = Math.min(this._lineAt(this.cursor.line).content.length, col);
         let cancelPreferred = false;
 
         if (line - linesPerPage < 0) {
@@ -900,19 +1040,19 @@ export class Editor {
         const h = this.canvas.height / this.dpr;
         const linesPerPage = Math.floor((h + this.lineHeight) / this.lineHeight);
 
-        let maxLine = this.lines.length - 1;
+        let maxLine = this._getNbLines() - 1;
 
         if (ctrl) {
             // Theorically works but un-testable on browser, it captures it first
             const startLine = Math.max(0, Math.floor(this.scrollY / this.lineHeight));
-            maxLine = Math.min(this.lines.length, startLine + Math.ceil((h + this.lineHeight) / this.lineHeight));
+            maxLine = Math.min(this._getNbLines(), startLine + Math.ceil((h + this.lineHeight) / this.lineHeight));
         }
 
-        let newCol = Math.min(this.lines[this.cursor.line].length, col);
+        let newCol = Math.min(this._lineAt(this.cursor.line).content.length, col);
         let cancelPreferred = false;
 
-        if (line + linesPerPage > this.lines.length - 1) {
-            newCol = this.lines[this.lines.length - 1].length;
+        if (line + linesPerPage > this._getNbLines() - 1) {
+            newCol = this._lineAt(this._getNbLines() - 1).content.length;
             cancelPreferred = true;
         }
 
@@ -933,13 +1073,13 @@ export class Editor {
         const line = this._clamp(
             Math.floor(contentY / this.lineHeight),
             0,
-            this.lines.length - 1
+            this._getNbLines() - 1
         );
 
         const col = this._clamp(
             Math.round(contentX / this.charWidth),
             0,
-            (this.lines[line] ?? "").length
+            (this._lineAt(line).content ?? "").length
         );
 
         return { line, col };
@@ -965,8 +1105,8 @@ export class Editor {
         ctx.font = `${this.fontSize}px ${this.fontFamily}`;
         ctx.textBaseline = "top";
 
-        const startLine = Math.max(0, Math.floor(this.scrollY / this.lineHeight));
-        const endLine = Math.min(this.lines.length, startLine + Math.ceil((h + this.lineHeight) / this.lineHeight));
+        const startLine = Math.max(0, Math.ceil(this.scrollY / this.lineHeight));
+        const endLine = Math.min(this._getNbLines(), startLine + Math.floor(((h - 2 * this.paddingHeight) + this.lineHeight) / this.lineHeight));
 
         // Selection on displayed lines
         let selStart = this.selection.start;
@@ -983,16 +1123,16 @@ export class Editor {
 
             if (this.inSelection && selStart.line <= i && selEnd.line >= i) {
                 const selColStart = selStart.line < i ? 0 : selStart.col;
-                const selColEnd = selEnd.line > i ? this.lines[i].length : selEnd.col;
+                const selColEnd = selEnd.line > i ? this._lineAt(i).content.length : selEnd.col;
                 ctx.fillStyle = this.theme.get("selection") ?? "rgba(255, 255, 255, 0.5)";
-                ctx.fillRect(x + selColStart * this.charWidth, y - 1, (selColEnd - selColStart) * this.charWidth, this.lineHeight - 2);
+                ctx.fillRect(x + selColStart * this.charWidth, y - 3, (selColEnd - selColStart) * this.charWidth, this.lineHeight);
             }
 
             const lineNumber = String(i + 1).padStart(this.log10NbLines);
             ctx.fillStyle = this.theme.get("gutter") ?? "rgba(255, 255, 255, 0.5)";
             ctx.fillText(lineNumber, 8, y);
 
-            const tokens = this.highlighter.tokenize(this.lines[i]);
+            const tokens = this.highlighter.tokenize(i);
             let currentX = this.paddingWidth + (minChar * this.charWidth) - this.scrollX;
             let pastNbChars = 0;
             for (const token of tokens) {
@@ -1014,7 +1154,7 @@ export class Editor {
 
             if (cx >= -2 && cx <= w + 2 && cy >= -this.lineHeight && cy <= h + this.lineHeight) {
                 ctx.fillStyle = this.theme.get("caret") ?? "#ffffffff";
-                ctx.fillRect(cx, cy - 2, 2, this.lineHeight);
+                ctx.fillRect(cx, cy - 1, 2, this.lineHeight);
             }
         }
     }

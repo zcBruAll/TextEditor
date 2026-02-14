@@ -1,5 +1,10 @@
 export class Highlighter {
+    constructor(editor) {
+        this.editor = editor;
+    }
+
     tokenize(line) {
-        return [{ val: line, type: "default" }];
+        const content = this.editor._lineAt(line).content;
+        return [{ val: content, type: "default" }];
     }
 }
