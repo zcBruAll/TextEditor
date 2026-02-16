@@ -115,7 +115,7 @@ export class Editor {
         this.lines = [
             {
                 lines: [
-                    { content: "lang: c, theme: midnight", lastState: "normal" },
+                    { content: "lang: txt, theme: midnight", lastState: "normal" },
                     { content: "", lastState: "normal" },
                     { content: "Welcome.", lastState: "normal" },
                     { content: "This is a custom text editor, built from scratch.", lastState: "normal" },
@@ -131,7 +131,7 @@ export class Editor {
                     { content: "--- MOVING AROUND ---", lastState: "normal" },
                     { content: " • Arrow keys move the caret.", lastState: "normal" },
                     { content: " • Ctrl + Arrow jumps by word.", lastState: "normal" },
-                    { content: " • Home /* End jump to line start / end.", lastState: "normal" },
+                    { content: " • Home End jump to line start / end.", lastState: "normal" },
                     { content: " • Ctrl + Home / End jump to the start / end of the document.", lastState: "normal" },
                     { content: " • Page Up / Page Down scroll vertically.", lastState: "normal" },
                     { content: " • Mouse wheel also scroll vertically.", lastState: "normal" },
@@ -146,7 +146,7 @@ export class Editor {
                     { content: "--- EDITING ---", lastState: "normal" },
                     { content: " • Backspace / Delete remove characters.", lastState: "normal" },
                     { content: " • Ctrl + Backspace / delete delete by words.", lastState: "normal" },
-                    { content: " • Ctrl + Z */ Ctrl + Y undo and redo changes.", lastState: "normal" },
+                    { content: " • Ctrl + Z / Ctrl + Y undo and redo changes.", lastState: "normal" },
                     { content: "", lastState: "normal" },
                     { content: "--- CLIPBOARD ---", lastState: "normal" },
                     { content: " • Ctrl + C copies the current selection.", lastState: "normal" },
@@ -156,7 +156,7 @@ export class Editor {
                     { content: "--- METADATA LINE ---", lastState: "normal" },
                     { content: " • First line is interpreted as the metadata line.", lastState: "normal" },
                     { content: " • Lang metadata changes the syntax highlighter language", lastState: "normal" },
-                    { content: "   Available : (txt, C)", lastState: "normal" },
+                    { content: "   Available : (txt, C, JS)", lastState: "normal" },
                     { content: " • theme metadata changes the theme", lastState: "normal" },
                     { content: "   Available : (midnight, nord, solarized_dark)", lastState: "normal" },
                     { content: "", lastState: "normal" },
@@ -316,6 +316,7 @@ export class Editor {
             this.nbClick = 1;
         }
         this.lastClick = now;
+        this.render();
     }
 
     onMouseMove(e) {

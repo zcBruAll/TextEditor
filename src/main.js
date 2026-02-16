@@ -45,6 +45,7 @@ window.addEventListener("copy", (e) => copy(e));
 window.addEventListener("cut", (e) => {
     copy(e);
     editor._deleteSelection();
+    editor.render();
 })
 
 canvas.addEventListener("mousedown", (e) => editor.onMouseDown(e));
